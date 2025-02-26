@@ -16,7 +16,7 @@ class Nomus:
         self.url = 'https://metalservtech.nomus.com.br/metalservtech/Login.do?metodo=LogOff'
         self.username = username
         self.password = password
-        self.chromedriverPath = r'C:\Users\jogol\AppData\Local\Programs\chromedriver-win64'
+        self.chromedriverPath = r'C:\Users\Thalles\AppData\Local\Programs\chromedriver-win64'
         self.service = Service(executable_path=self.chromedriverPath)
         self.driver = webdriver.Chrome()
 
@@ -38,7 +38,7 @@ class Nomus:
         ActionChains(self.driver)\
             .click(click)\
             .perform()
-        sleep(2)
+        sleep(1)
 
     def acessarPagina(self):
 
@@ -51,7 +51,7 @@ class Nomus:
         ActionChains(self.driver)\
             .click(click)\
             .perform()
-        sleep(2)
+        sleep(1)
 
     def criarProduto(self):
         
@@ -59,8 +59,17 @@ class Nomus:
         ActionChains(self.driver)\
             .click(click)\
             .perform()
-        sleep(20)
-        self.driver.quit()
+
+    def preencherCampos(self):
+        
+        # Descrição do produto
+        text_input = self.driver.find_element(By.NAME, "descricao")
+        ActionChains(self.driver)\
+            .send_keys_to_element(text_input, "Teste")\
+            .perform()
+        
+        # Unidade de medida
+        
 
 dotenv.load_dotenv()
 loginOS = os.getenv("LOGIN")
@@ -71,5 +80,7 @@ sleep(5)
 nomus.loginNomus()
 nomus.acessarPagina()
 nomus.criarProduto()
+sleep(5)
+nomus.preencherCampos()
 
 sleep(200)
