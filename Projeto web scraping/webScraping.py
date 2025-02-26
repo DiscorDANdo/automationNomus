@@ -72,4 +72,4 @@ nomus.loginNomus()
 nomus.acessarPagina()
 nomus.criarProduto()
 
-sleep(10)
+sleep(200)
