@@ -1,9 +1,6 @@
-# TODO Criar uma classe que receba uma função 
-# TODO Fazer a função abrir um site e pesquisar sobre o slogan de uma empresa
-
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver import ActionChains
+from selenium.webdriver import Keys, ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.ui import WebDriverWait
@@ -13,7 +10,6 @@ import dotenv
 import os
 import pdfplumber
 import re
-tamanho = 0
 
 class Nomus:
     
@@ -27,6 +23,7 @@ class Nomus:
         self.driver = webdriver.Chrome()
         self.leitura = LeituraPDF(caminho_pdf)
         self.paginas = LeituraPDF.extrair_paginas(self.leitura)
+        self.itens_verificados = []
 
     def login_nomus(self):
 
@@ -61,6 +58,55 @@ class Nomus:
             .perform()
         sleep(1)
 
+    def verificar_pecas(self, pagina):
+
+        # Digitando nome do produto
+        text_input = self.driver.find_element(By.NAME, "descricaoPesquisa")
+        ActionChains(self.driver)\
+            .send_keys_to_element(text_input, self.leitura.encontrar_codigo(pagina))\
+            .perform()
+        
+        # Pesquisa o produto
+        click = self.driver.find_element(By.ID, "botao_pesquisar")
+        ActionChains(self.driver)\
+            .click(click)\
+            .perform()
+        
+        # Seleciona o campo
+        click = self.driver.find_element(By.NAME, "descricaoPesquisa")
+        ActionChains(self.driver)\
+            .click(click)\
+            .perform()
+
+        # Selecionando o nome da peça
+        ActionChains(self.driver)\
+            .key_down(Keys.CONTROL)\
+            .send_keys("a")\
+            .key_up(Keys.CONTROL)\
+            .perform()
+        
+        # Apagando o nome da peça
+        ActionChains(self.driver)\
+            .send_keys(Keys.DELETE)\
+            .perform()
+        
+        # Verificando se a peça já exite no sistema
+        elemento = WebDriverWait(self.driver, 10).until(
+            EC.visibility_of_element_located((By.XPATH, "//*[contains(@class, 'rodape')"))
+        )
+
+        if elemento.is_displayed():
+            texto = elemento.text
+
+            match = re.search(r"(\d+)\s*a\s*(\d+)\s*de\s*(\d+)", texto)
+
+            if match:
+                self.itens_verificados.append(self.leitura.encontrar_codigo(pagina))
+            else:
+                pass
+        else:
+            print("Resultado não encontrado.")
+
     def criar_produto(self):
         
         click = self.driver.find_element(By.ID, "botao_criar_produto")
@@ -69,8 +115,11 @@ class Nomus:
             .perform()
         sleep(2)
 
-    def preencher_campos_producao_propria(self, pagina):
+    def preencher_campos(self, pagina):
         
+        if self.leitura.encontrar_codigo(pagina) in self.itens_verificados:
+            pass
+        else:
             # Descrição do produto
             text_input = self.driver.find_element(By.NAME, "descricao")
             ActionChains(self.driver)\
@@ -96,7 +145,11 @@ class Nomus:
             # Digitando NCM
             text_input = self.driver.find_element(By.NAME, "nomeNcm")
 
-            if self.leitura.encontrar_espessura(pagina) < 3:
+            if self.leitura.encontrar_cliente(pagina) in "ADR":
+                ActionChains(self.driver)\
+                    .send_keys_to_element(text_input, "87169090")\
+                    .perform()
+            elif self.leitura.encontrar_espessura(pagina) < 3:
                 ActionChains(self.driver)\
                     .send_keys_to_element(text_input, "72085400")\
                     .perform()
@@ -274,20 +327,21 @@ class LeituraPDF:
     Quantidade: {LeituraPDF.encontrar_quantidade(self)}
     """)
         
+
 dotenv.load_dotenv()
 loginOS = os.getenv("LOGIN")
 senhaOS = os.getenv("PASSWORD")
-caminho_pdf = r"C:\Users\Thalles\Desktop\Listas\ListaAtualizada9.pdf"
-
+caminho_pdf = r"C:\Users\Thalles\Desktop\Listas\ListaAtualizada10.pdf"
 automacao = Nomus(loginOS, senhaOS, caminho_pdf)
+
 automacao.login_nomus()
 automacao.acessar_pagina()
+for pagina in range(automacao.paginas):
+    automacao.verificar_pecas(pagina)
+print(automacao.itens_verificados)
 
-try:
-    for pagina in range(automacao.paginas):
-        automacao.criar_produto()
-        automacao.preencher_campos_producao_propria(pagina)
-except Exception:
-    print("Erro com o código!")
-finally:
-    print("Código executado com sucesso!")
+# Criar produto
+
+for pagina in range(automacao.paginas):
+     automacao.criar_produto()
+     automacao.preencher_campos(pagina)
