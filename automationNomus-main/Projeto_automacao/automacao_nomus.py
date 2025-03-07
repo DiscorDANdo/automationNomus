@@ -61,51 +61,55 @@ class Nomus:
     def verificar_pecas(self, pagina):
 
         # Digitando nome do produto
-        text_input = self.driver.find_element(By.NAME, "descricaoPesquisa")
-        ActionChains(self.driver)\
-            .send_keys_to_element(text_input, self.leitura.encontrar_codigo(pagina))\
-            .perform()
+        try:
+            text_input = WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.NAME, "descricaoPesquisa"))
+            )
+            ActionChains(self.driver)\
+                .send_keys_to_element(text_input, self.leitura.encontrar_codigo(pagina))\
+                .perform()
+        except Exception as e:
+            print(f"Erro: {e}")
         
         # Pesquisa o produto
-        click = self.driver.find_element(By.ID, "botao_pesquisar")
-        ActionChains(self.driver)\
-            .click(click)\
-            .perform()
-        
-        # Seleciona o campo
-        click = self.driver.find_element(By.NAME, "descricaoPesquisa")
-        ActionChains(self.driver)\
-            .click(click)\
-            .perform()
-
-        # Selecionando o nome da peça
-        ActionChains(self.driver)\
-            .key_down(Keys.CONTROL)\
-            .send_keys("a")\
-            .key_up(Keys.CONTROL)\
-            .perform()
-        
-        # Apagando o nome da peça
-        ActionChains(self.driver)\
-            .send_keys(Keys.DELETE)\
-            .perform()
+        try:
+            click = WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.ID, "botao_pesquisar"))
+            )
+            ActionChains(self.driver)\
+                .click(click)\
+                .perform()
+        except Exception as e:
+            print(f"Erro: {e}")
         
         # Verificando se a peça já exite no sistema
-        elemento = WebDriverWait(self.driver, 10).until(
-            EC.visibility_of_element_located((By.XPATH, "//*[contains(@class, 'rodape')"))
-        )
+        try:
+            WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.CLASS_NAME, "tela-vazia"))
+            )
+            self.itens_verificados.append(self.leitura.encontrar_codigo(pagina))
+        except Exception as e:  
+            print(f"Erro: {e}")
 
-        if elemento.is_displayed():
-            texto = elemento.text
-
-            match = re.search(r"(\d+)\s*a\s*(\d+)\s*de\s*(\d+)", texto)
-
-            if match:
-                self.itens_verificados.append(self.leitura.encontrar_codigo(pagina))
-            else:
-                pass
-        else:
-            print("Resultado não encontrado.")
+        try:
+            campo_pesquisa = WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.NAME, "descricaoPesquisa")))
+            ActionChains(self.driver)\
+                .click(campo_pesquisa)\
+                .perform()
+            
+            ActionChains(self.driver)\
+                .key_down(Keys.CONTROL)\
+                .send_keys("a")\
+                .key_up(Keys.CONTROL)\
+                .perform()
+            
+            ActionChains(self.driver)\
+                .send_keys(Keys.DELETE)\
+                .perform()
+        except Exception as e:
+            print(f"Erro: {e}")
+        
 
     def criar_produto(self):
         
@@ -118,8 +122,6 @@ class Nomus:
     def preencher_campos(self, pagina):
         
         if self.leitura.encontrar_codigo(pagina) in self.itens_verificados:
-            pass
-        else:
             # Descrição do produto
             text_input = self.driver.find_element(By.NAME, "descricao")
             ActionChains(self.driver)\
@@ -149,22 +151,23 @@ class Nomus:
                 ActionChains(self.driver)\
                     .send_keys_to_element(text_input, "87169090")\
                     .perform()
-            elif self.leitura.encontrar_espessura(pagina) < 3:
-                ActionChains(self.driver)\
-                    .send_keys_to_element(text_input, "72085400")\
-                    .perform()
-            elif 3.1 <= self.leitura.encontrar_espessura(pagina) <= 4.75:
-                ActionChains(self.driver)\
-                    .send_keys_to_element(text_input, "72085300")\
-                    .perform()
-            elif 4.76 < self.leitura.encontrar_espessura(pagina) <= 10:
-                ActionChains(self.driver)\
-                    .send_keys_to_element(text_input, "72085200")\
-                    .perform()
-            elif 10.1 < self.leitura.encontrar_espessura(pagina) <= 25:
-                ActionChains(self.driver)\
-                    .send_keys_to_element(text_input, "72085100")\
-                    .perform()
+            else:
+                if self.leitura.encontrar_espessura(pagina) <= 3:
+                    ActionChains(self.driver)\
+                        .send_keys_to_element(text_input, "72085400")\
+                        .perform()
+                if 3.1 <= self.leitura.encontrar_espessura(pagina) <= 4.75:
+                    ActionChains(self.driver)\
+                        .send_keys_to_element(text_input, "72085300")\
+                        .perform()
+                if 4.76 < self.leitura.encontrar_espessura(pagina) <= 10:
+                    ActionChains(self.driver)\
+                        .send_keys_to_element(text_input, "72085200")\
+                        .perform()
+                if 10.1 < self.leitura.encontrar_espessura(pagina) <= 25:
+                    ActionChains(self.driver)\
+                        .send_keys_to_element(text_input, "72085100")\
+                        .perform()
 
             WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located((By.ID, "ui-id-43")))
             
@@ -210,6 +213,8 @@ class Nomus:
             ActionChains(self.driver)\
                 .click(click)\
                 .perform()
+        else:
+            pass
         
 class LeituraPDF:
 
@@ -326,7 +331,6 @@ class LeituraPDF:
     Cliente: {LeituraPDF.encontrar_cliente(self)}
     Quantidade: {LeituraPDF.encontrar_quantidade(self)}
     """)
-        
 
 dotenv.load_dotenv()
 loginOS = os.getenv("LOGIN")
@@ -336,12 +340,13 @@ automacao = Nomus(loginOS, senhaOS, caminho_pdf)
 
 automacao.login_nomus()
 automacao.acessar_pagina()
+
+# Verificar se as peças já estão criadas
 for pagina in range(automacao.paginas):
     automacao.verificar_pecas(pagina)
 print(automacao.itens_verificados)
 
 # Criar produto
-
 for pagina in range(automacao.paginas):
-     automacao.criar_produto()
-     automacao.preencher_campos(pagina)
+    automacao.criar_produto()
+    automacao.preencher_campos(pagina)
