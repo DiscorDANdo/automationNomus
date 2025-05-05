@@ -7,7 +7,7 @@ class tkinter_class():
 
     def escolher_pdf():
         caminho_pdf = askopenfilename(
-            title="Selecione o arquivo desejado.",
+            title="Selecione o PDF",
             filetypes=[("PDF files", "*.pdf")]
         )
 
@@ -15,7 +15,7 @@ class tkinter_class():
     
     def escolher_planilha():
         caminho_planilha = askopenfilename(
-            title="Selecione o arquivo desejado.",
+            title="Selecione a planilha.",
             filetypes=[("Planilhas excel", "*.xlsx")]
         )
 

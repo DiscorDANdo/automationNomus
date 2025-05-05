@@ -95,9 +95,9 @@ class leituraPDF:
         if match:
             largura_peca = match.group(1).strip()
         else:
-            erro_largura_peca = "Largura não encontrada."
+            largura_peca = "Largura não encontrada."
         
-        return largura_peca, erro_largura_peca
+        return largura_peca, largura_peca
     
     def encontrar_comprimento(self, pagina=0):
         padrao = r"Comprimento:\s*(.*?)\s*(?=FIM)"
@@ -106,9 +106,9 @@ class leituraPDF:
         if match:
             comprimento_peca = match.group(1).strip()
         else:
-            erro_comprimento_peca = "Comprimento não encontrado."
+            comprimento_peca = "Comprimento não encontrado."
         
-        return comprimento_peca, erro_comprimento_peca
+        return comprimento_peca, comprimento_peca
 
     def encontrar_peso(self, pagina=0):
         padrao = r"Peso:\s*(.*?)\s*(?=FIM)"
