@@ -1,4 +1,0 @@
-Selenium
-PDFplumber
-pandas
-tkinter
