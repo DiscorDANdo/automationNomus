@@ -23,16 +23,6 @@ class orcamento:
         
         sheet = book["Carbono"]
 
-        material = df.loc[0, "Material"]
-
-        if material == "Carbono":
-            sheet = book["Carbono"]
-        elif material == "Inox":
-            sheet = book["Inox"]
-        elif material == "Alumínio": 
-            sheet = book["Alumínio"]
-
-
         linha_inicial = 2
 
         for i, row in df.iterrows():
@@ -51,6 +41,11 @@ class orcamento:
             valor = valor.split(",")[0]
             valor = valor.replace(",", "")
 
+            if len(valor) >= 4:
+                primeiro_digito = valor[0]
+                restante_digitos = valor[1:]
+                valor = f"{primeiro_digito},{restante_digitos}"
+                ic(f"Data successfully formatted: {valor}")
             if len(valor) == 3:
                 valor = f"0,{valor}"
                 ic(f"Data succesfully formatted: {valor}")
@@ -78,8 +73,13 @@ class orcamento:
             ic(f"Error formatting time: {e}")
             return 0
 
+    def main():
+        ic("Starting data extraction...")
+        caminho_pdf = tkinter_class.tkinter_class.escolher_pdf()
+        caminho_planilha = tkinter_class.tkinter_class.escolher_planilha()
+        automacao = orcamento(caminho_pdf, caminho_planilha)
+        automacao.extrair_dados()
+        ic("Data extraction completed successfully.")
 
-caminho_pdf = tkinter_class.tkinter_class.escolher_pdf()
-caminho_planilha = tkinter_class.tkinter_class.escolher_planilha()
-orcamento = orcamento(caminho_pdf, caminho_planilha)
-print(orcamento.extrair_dados())
+if __name__ == "__main__":
+    orcamento.main()
