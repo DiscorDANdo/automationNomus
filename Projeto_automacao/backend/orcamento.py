@@ -1,4 +1,6 @@
 from openpyxl import load_workbook
+from datetime import datetime
+from icecream import ic
 import pandas as pd
 import tabula
 import tkinter_class
@@ -16,20 +18,66 @@ class orcamento:
         
         dfs_completed = pd.concat(dfs, ignore_index=True)
 
-        #dfs_completed.to_excel(self.arquivo_planilha, index=False)
-
         df = pd.DataFrame(dfs_completed)
-
         book = load_workbook(self.arquivo_planilha)
-
-        with pd.ExcelWriter(self.arquivo_planilha, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
-            writer.book = book
-
-            df.to_excel(writer, sheet_name='Plan1', startrow=1, startcol=0, index=False, header=False)
         
-    
-    def atualizar_planilha(self):
-        pass
+        sheet = book["Carbono"]
+
+        material = df.loc[0, "Material"]
+
+        if material == "Carbono":
+            sheet = book["Carbono"]
+        elif material == "Inox":
+            sheet = book["Inox"]
+        elif material == "Alumínio": 
+            sheet = book["Alumínio"]
+
+
+        linha_inicial = 2
+
+        for i, row in df.iterrows():
+            linha_excel = linha_inicial + i
+            sheet[f"A{linha_excel}"] = row["Peça"]
+            sheet[f"B{linha_excel}"] = row["Espessura"]
+            sheet[f"C{linha_excel}"] = f"{self.formatar_valor(row["Largura"])}"
+            sheet[f"D{linha_excel}"] = f"{self.formatar_valor(row["Comprimento"])}"
+            sheet[f"G{linha_excel}"] = f"{self.formatar_tempo(row["Tempo"])}"
+            sheet[f"J{linha_excel}"] = row["QNTD"]
+            sheet[f"H{linha_excel}"] = row["DOBRA"]
+        book.save(self.arquivo_planilha)
+
+    def formatar_valor(self, valor):
+        try:
+            valor = valor.split(",")[0]
+            valor = valor.replace(",", "")
+
+            if len(valor) == 3:
+                valor = f"0,{valor}"
+                ic(f"Data succesfully formatted: {valor}")
+            if len(valor) == 2:
+                valor = f"0,0{valor}"
+                ic(f"Data succesfully formatted: {valor}")
+            if len(valor) == 1:
+                valor = f"0,00{valor}"
+                ic(f"Data succesfully formatted: {valor}")
+            
+            return valor
+        
+        except Exception as e:
+            ic(f"Error formatting data: {e}")
+            return "0,00"
+        
+    def formatar_tempo(self, tempo):
+        try:
+            tempo_str = tempo
+            tempo = datetime.strptime(tempo_str, "%H:%M:%S")
+            tempo_formatado = tempo.hour * 3600 + tempo.minute * 60 + tempo.second
+            ic(f"Time successfully formatted: {tempo_formatado}")
+            return tempo_formatado
+        except Exception as e:
+            ic(f"Error formatting time: {e}")
+            return 0
+
 
 caminho_pdf = tkinter_class.tkinter_class.escolher_pdf()
 caminho_planilha = tkinter_class.tkinter_class.escolher_planilha()
