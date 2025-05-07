@@ -5,12 +5,15 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from icecream import ic
 from time import sleep
 from datetime import timedelta 
 import leituraPDF
 import tkinter_class
 import dotenv
 import os
+
+#TODO: Adicionar as funções do orcamento.py no main()
 
 class Nomus:
     
@@ -52,7 +55,7 @@ class Nomus:
             self.driver.get(self.url + 'Produto.do?metodo=Pesquisar')
             
         except Exception as e:
-            print(f"Erro ao acessar página: {e}")
+            ic(f"Error acessing page: {e}")
 
 
     def verificar_pecas(self, pagina):
@@ -69,7 +72,7 @@ class Nomus:
                 .send_keys_to_element(text_input, self.leitura.encontrar_codigo(pagina))\
                 .perform()
         except Exception as e:
-            print(f"Erro: {e}")
+            ic(f"Error inserting product name: {e}")
         
         # Pesquisa o produto
         try:
@@ -80,7 +83,7 @@ class Nomus:
                 .click(click)\
                 .perform()
         except Exception as e:
-            print(f"Erro: {e}")
+            ic(f"Error searching the product: {e}")
         
         # Verificando se a peça já exite no sistema
         try:
@@ -93,9 +96,10 @@ class Nomus:
             else:
                 pass
         except Exception:  
-            print("Peça já criada.")
+            ic("Product already exists on system.")
 
         try:
+            # Apaga informações do campo de pesquisa
             campo_pesquisa = WebDriverWait(self.driver, 10).until(
                 EC.visibility_of_element_located((By.NAME, "descricaoPesquisa")))
             ActionChains(self.driver)\
@@ -112,7 +116,7 @@ class Nomus:
                 .send_keys(Keys.DELETE)\
                 .perform()
         except Exception as e:
-            print(f"Erro: {e}")
+            ic(f"Error erasing info on descripton field: {e}")
         
 
     def criar_produto(self):
@@ -512,6 +516,26 @@ class Nomus:
         while not self.driver.current_url.startswith(self.url + 'Produto.do?metodo=Pesquisar'):
             self.acessar_pagina()
 
+        try:
+            # Apaga informações do campo de pesquisa
+            campo_pesquisa = WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.NAME, "descricaoPesquisa")))
+            ActionChains(self.driver)\
+                .click(campo_pesquisa)\
+                .perform()
+            
+            ActionChains(self.driver)\
+                .key_down(Keys.CONTROL)\
+                .send_keys("a")\
+                .key_up(Keys.CONTROL)\
+                .perform()
+            
+            ActionChains(self.driver)\
+                .send_keys(Keys.DELETE)\
+                .perform()
+        except Exception as e:
+            ic(f"Error erasing info on descripton field: {e}")
+
         # Digita o nome do produto
         sleep(1)
         digita_produto_pesquisa = WebDriverWait(self.driver, 10).until(
@@ -552,7 +576,7 @@ class Nomus:
             )
             botao_localizado = True
         except Exception:
-            print("Lista de materiais já criada.")
+            ic("Product script already exists.")
 
         if not botao_localizado:
         
@@ -771,7 +795,7 @@ class Nomus:
                             .send_keys_to_element(digita_tempo_MOD_operacao_dobra, tempo_formatado)\
                             .perform()
                     
-                # Clica no botão para salvar
+                # Clica no botão para salvar1
                 click_botao_salvar = WebDriverWait(self.driver, 5).until(
                     EC.visibility_of_element_located((By.XPATH, ".//input[@type='button' and @id='botao_salvar']"))
                 )
@@ -803,7 +827,7 @@ class Nomus:
             .perform()
         
         # Log de sucesso
-        print("Roteiro criado com sucesso.")
+        ic("Production script sucessfully created.")
 
 def main():
     dotenv.load_dotenv()
@@ -835,28 +859,28 @@ def main():
                 if 1 <= resposta <= 6:
                     break
                 else:
-                    print("Resposta inválida. Tente novamente!")
+                    ic("Invalid answer. Try again!")
                     break
             except ValueError:
-                print("Resposta inválida. Tente novamente!")
+                ic("Invalid answer. Try again!")
                 break
         
         if resposta == 1:
 
             # Verificar se as peças já estão criadas
-            print(linhas)
+            ic(linhas)
             for pagina in range(automacao.paginas):
                 automacao.verificar_pecas(pagina)
-            print(f'LISTA DE ITENS VERIFICADOS: \n {automacao.itens_verificados}')
-            print(f'TAMANHO DA LISTA: {len(automacao.itens_verificados)}')
+            ic(f'Verificated items: \n {automacao.itens_verificados}')
+            ic(f'List lenght: {len(automacao.itens_verificados)}')
 
             sleep(2)
 
             # Criar produto
-            print(linhas)
+            ic(linhas)
 
             tamanho_lista = len(automacao.itens_verificados)
-            print(f"Tamanho da lista {tamanho_lista}")
+            ic(f"List lenght: {tamanho_lista}")
             if tamanho_lista > 0:
                 for pagina in range(automacao.paginas):
                         automacao.criar_produto()
@@ -868,59 +892,59 @@ def main():
             for pagina in range(automacao.paginas):
                 automacao.criar_lista_materiais(pagina)
             
-            print("Lista de materiais criadas com sucesso!")
-            print(linhas)
+            ic("Material list created successfully!")
+            ic(linhas)
 
             # Criar roteiro de produção
-            print(linhas)
+            ic(linhas)
             for pagina in range(automacao.paginas):
                 automacao.criar_roteiro(pagina)
 
-            print("Roteiros criados com sucesso!")
-            print(linhas)
+            ic("Production scripts created successfully!")
+            ic(linhas)
 
         elif resposta == 2:
             # Verificar se as peças já estão criadas
-            print(linhas)
+            ic(linhas)
             for pagina in range(automacao.paginas):
                 automacao.verificar_pecas(pagina)
-            print(f'LISTA DE ITENS VERIFICADOS: \n {automacao.itens_verificados}')
-            print(f'TAMANHO DA LISTA: {len(automacao.itens_verificados)}')
+            ic(f'Verificated items: \n {automacao.itens_verificados}')
+            ic(f'List lenght: {len(automacao.itens_verificados)}')
 
             sleep(2)
 
             # Criar produto
-            print(linhas)
+            ic(linhas)
 
             tamanho_lista = len(automacao.itens_verificados)
-            print(f"Tamanho da lista {tamanho_lista}")
+            ic(f"List lenght: {tamanho_lista}")
             if tamanho_lista > 0:
                 for pagina in range(automacao.paginas):
                         automacao.criar_produto()
                         automacao.preencher_campos(pagina)
 
             sleep(2)
-            print("Criação feita com sucesso!")
+            ic("Products created successfully!")
 
         elif resposta == 3:
             # Criar lista de materiais
             for pagina in range(automacao.paginas):
                 automacao.criar_lista_materiais(pagina)
             
-            print("Lista de materiais criadas com sucesso!")
-            print(linhas)
+            ic("Material list created successfully!")
+            ic(linhas)
 
         elif resposta == 4:
              # Criar roteiro de produção
-            print(linhas)
+            ic(linhas)
             for pagina in range(automacao.paginas):
                 automacao.criar_roteiro(pagina)
 
-            print("Roteiros criados com sucesso!")
-            print(linhas)
+            ic("Production scripts created successfully!")
+            ic(linhas)
 
         elif resposta == 6:
-            print("Programa finalizado com sucesso!")
+            ic("Exiting the program...")
             break
 
 if __name__ == "__main__":
