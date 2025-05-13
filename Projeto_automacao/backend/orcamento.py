@@ -1,10 +1,9 @@
 from openpyxl import load_workbook
+from tkinter_class import tkinter_class
 from datetime import datetime
 from icecream import ic
 import pandas as pd
 import tabula
-import tkinter_class
-
 
 class orcamento:
     
@@ -75,8 +74,8 @@ class orcamento:
 
     def main():
         ic("Starting data extraction...")
-        caminho_pdf = tkinter_class.tkinter_class.escolher_pdf()
-        caminho_planilha = tkinter_class.tkinter_class.escolher_planilha()
+        caminho_pdf = tkinter_class.escolher_pdf()
+        caminho_planilha = tkinter_class.escolher_planilha()
         automacao = orcamento(caminho_pdf, caminho_planilha)
         automacao.extrair_dados()
         ic("Data extraction completed successfully.")

@@ -457,7 +457,7 @@ class Nomus:
                         .perform()
                 elif 7 <= espessura <= 7.5:
                     ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "Colocar espessura no banco")\
+                        .send_keys_to_element(digita_materia_prima, "MP 00017")\
                         .perform()
                 elif 7.9 <= espessura <= 8:
                     ActionChains(self.driver)\
@@ -477,11 +477,11 @@ class Nomus:
                         .perform()
                 elif 19 <= espessura < 19.5:
                     ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "Colocar espessura no banco")\
+                        .send_keys_to_element(digita_materia_prima, "MP 00001")\
                         .perform()
                 elif espessura <= 25:
                     ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "Colocar espessura no banco")\
+                        .send_keys_to_element(digita_materia_prima, "MP 00001")\
                         .perform()
 
                 # Clica no material

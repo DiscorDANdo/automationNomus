@@ -50,6 +50,7 @@ class leituraPDF:
 
             padroes = [
                 r"Código:\s*(.*?)\s*(?=FIM)",
+                r"Código:\s*(\d+)\s*(?=FIM)",
                 r"Código:\s*(\d{3}\.\d{1,2}\s-\s.*)",
                 r"Código:\s*(\d{3}\s-\s.*)",
                 r"Código:\s*(\d{3}\.\d+\s-\s[\w\s-]+-\s[\d\w-]+)",
@@ -58,7 +59,7 @@ class leituraPDF:
 
             for padrao in padroes:
 
-                match = re.search(padrao, self.texto[pagina])
+                match = re.search(padrao, self.texto[pagina], re.IGNORECASE)
                 if match:
                     nome_peca = match.group(1).strip()
                     return nome_peca
