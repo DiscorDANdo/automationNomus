@@ -54,7 +54,7 @@ class leitura:
                 self.peca["Cliente"] = self.extrair_cliente()
 
                 self.lista_pecas.append(self.peca.copy())
-                ic(f"Product successfully extracted: {self.peca}")
+            ic("Products successfully extracted")
         except Exception as e:
             ic(f"Error extracting product: {e}")
     
@@ -122,8 +122,7 @@ class leitura:
         leitor.extrair_pecas()
         leitor.extrair_tamanho()
         ic("Data extraction completed successfully.")
-
-        ic(leitor.lista_pecas[0]["Espessura"])
+        ic(leitor.lista_pecas)
         
 if __name__ == "__main__":
     leitura.main()

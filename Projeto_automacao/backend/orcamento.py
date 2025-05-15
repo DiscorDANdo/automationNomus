@@ -11,6 +11,8 @@ class orcamento:
         self.arquivo_pdf = caminho_pdf
         self.arquivo_planilha = caminho_planilha
         self.dados = []
+        self.dados_excel = []
+        self.peca_excel = {"Código" : "", "Quantidade" : "", "Valor" : ""}
 
     def extrair_dados(self):
         dfs = tabula.read_pdf(self.arquivo_pdf, pages='all', multiple_tables=True, lattice=True)
@@ -34,6 +36,17 @@ class orcamento:
             sheet[f"J{linha_excel}"] = row["QNTD"]
             sheet[f"H{linha_excel}"] = row["DOBRA"]
         book.save(self.arquivo_planilha)
+
+    def extrair_dados_excel(self):
+        df = pd.read_excel(self.arquivo_planilha, sheet_name="Carbono")
+        
+        for i, row in df.iterrows():
+            self.peca_excel["Código"] = row["PEÇA"]
+            self.peca_excel["Quantidade"] = row["QTDE"]
+            self.peca_excel["Valor"] = row["UNI"]
+
+            self.dados_excel.append(self.peca_excel.copy())
+        ic("Products successfully extracted from Excel")
 
     def formatar_valor(self, valor):
         try:

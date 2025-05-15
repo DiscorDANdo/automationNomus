@@ -6,32 +6,43 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from leitura import leitura
+from orcamento import orcamento
 from icecream import ic
 from time import sleep
-from datetime import timedelta 
-# import leituraPDF
+from datetime import timedelta, date
 import tkinter_class
 import dotenv
 import os
 
+#TODO: Finalizar a função de criar orçamento
 #TODO: Adicionar as funções do orcamento.py no main()
 
 class Nomus:
     
-    def __init__(self, username, password, caminho_pdf):
+    def __init__(self, username, password, caminho_pdf, caminho_planilha):
         
+        # Selenium
         self.url = 'https://metalservtech.nomus.com.br/metalservtech/'
         self.username = username
         self.password = password
         self.chromedriverPath = r'C:\Users\Thalles\AppData\Local\Programs\chromedriver-win64'
         self.service = Service(executable_path=self.chromedriverPath)
         self.driver = webdriver.Chrome()
-        self.leitura = leitura(caminho_pdf)
+        self.itens_verificados = []
+
+        # leitura
+        self.caminho_pdf = caminho_pdf
+        self.leitura = leitura(self.caminho_pdf)
         self.dados = self.leitura.extrair_dados()
         self.peca = self.leitura.peca
         self.extracao_pecas = self.leitura.extrair_pecas()
         self.pecas = self.leitura.extrair_tamanho()
-        self.itens_verificados = []
+
+        # orcamento
+        self.orcamento = orcamento(caminho_pdf, caminho_planilha)
+        self.orcamento.extrair_dados
+        self.orcamento.extrair_dados_excel()
+        pecas_excel = self.orcamento.dados_excel
 
     def login_nomus(self):
 
@@ -94,13 +105,13 @@ class Nomus:
             elemento = WebDriverWait(self.driver, 2).until(
                 EC.visibility_of_element_located((By.CLASS_NAME, "tela-vazia"))
             )
-
+        
             if elemento.is_displayed():
                 self.itens_verificados.append(self.leitura.lista_pecas[peca].copy())
             else:
                 pass
-        except Exception as e:  
-            ic(f"Error verifying product existence. {e}")
+        except Exception as e:
+            ic(f"Error verifying product: {e}")
 
         try:
             # Apaga informações do campo de pesquisa
@@ -159,7 +170,7 @@ class Nomus:
             grupo_produto_criacaoPA = WebDriverWait(self.driver, 20).until(
                 EC.visibility_of_element_located((By.NAME, "idGrupoProduto"))
             )
-            if self.leitura.lista_pecas[peca]["Material"] in "Carbono Cliente" or "Inox Cliente":
+            if self.leitura.lista_pecas[peca]["Material"] in "Cliente":
                 select = Select(grupo_produto_criacaoPA)
                 select.select_by_value("21") # Industrialização
             else:
@@ -186,7 +197,7 @@ class Nomus:
             else:
                 if self.leitura.lista_pecas[peca]["Espessura"] <= 3:
                     ActionChains(self.driver)\
-                .send_keys_to_element(ncm_criacaoPA, "72085400")\
+                    .send_keys_to_element(ncm_criacaoPA, "72085400")\
                         .perform()
                 if 3.1 <= self.leitura.lista_pecas[peca]["Espessura"] <= 4.75:
                     ActionChains(self.driver)\
@@ -558,20 +569,24 @@ class Nomus:
             .perform()
 
         # Encontra o produto na pagina e clica no produto
-        nome = self.leitura.lista_pecas[peca]["Código"].upper()
-        xpath = f"//span[contains(text(), '{nome}')]"
+        try:
+            nome = self.leitura.lista_pecas[peca]["Código"].upper()
+            # xpath = f"//span[contains(text(), '{nome}')]"
+            xpath = f"//span[text()='{nome}']"
 
-        click_produto = self.driver.find_element(By.XPATH, xpath)
-        ActionChains(self.driver)\
-            .click(click_produto)\
-            .perform()
-        
-        # Seleciona o roteiro de produção
-        click_submenu_roteiro = self.driver.find_element(By.ID, "produtoAtivoLiberado_itemSubMenu_acessarRoteiroProduto")
-        ActionChains(self.driver)\
-            .click(click_submenu_roteiro)\
-            .perform()
-        
+            click_produto = self.driver.find_element(By.XPATH, xpath)
+            ActionChains(self.driver)\
+                .click(click_produto)\
+                .perform()
+            
+            # Seleciona o roteiro de produção
+            click_submenu_roteiro = self.driver.find_element(By.ID, "produtoAtivoLiberado_itemSubMenu_acessarRoteiroProduto")
+            ActionChains(self.driver)\
+                .click(click_submenu_roteiro)\
+                .perform()
+        except Exception as e:
+            ic(f"Error clicking on product: {e}")
+            
         # Verifica se existe roteiro
         botao_localizado = False
         try:
@@ -833,13 +848,111 @@ class Nomus:
             .send_keys(Keys.DELETE)\
             .perform()
 
+    def criar_orcamento(self, peca):
+        while not self.driver.current_url.startswith(self.url + "Proposta.do?metodo=Criar_proposta"):
+            self.driver.get(self.url + "Proposta.do?metodo=Criar_proposta")
+
+        # Preenche campo de cliente
+        campo_cliente = WebDriverWait(self.driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "nome_cliente"))
+        )
+        ActionChains(self.driver)\
+            .send_keys_to_element(campo_cliente, self.leitura.lista_pecas[peca]["Cliente"])\
+            .perform()
+        
+        # Espera menu de clientes aparecer
+        WebDriverWait(self.driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "ui-id-30"))
+        )
+
+        # Clica no cliente
+        cliente = WebDriverWait(self.driver, 10).until(
+            EC.visibility_of_element_located((By.CLASS_NAME, "ui-menu-item"))
+        )
+        ActionChains(self.driver)\
+            .click(cliente)\
+            .perform()
+        sleep(1)
+
+        
+        # Seleciona tipo de movimentação
+        seleciona_movimentação = WebDriverWait(self.driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "id_idTipoMovimentacao"))
+        )
+        select = Select(seleciona_movimentação)
+        if "Cliente" in self.leitura.lista_pecas[peca]["Material"]:
+            select.select_by_value("45")
+        else:
+            select.select_by_value("53")
+
+        # Localiza prazo de validade
+        prazo_validade = WebDriverWait(self.driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "id_dataValidade"))
+        )
+
+        # Apaga data antiga
+        ActionChains(self.driver)\
+            .click(prazo_validade)\
+            .perform()
+        
+        ActionChains(self.driver)\
+            .key_down(Keys.CONTROL)\
+            .send_keys("a")\
+            .key_up(Keys.CONTROL)\
+            .perform()
+        
+        ActionChains(self.driver)\
+            .send_keys(Keys.DELETE)\
+            .perform()
+        
+        # Pega data atual e futura
+        data = date.today()
+        data_futura = data + timedelta(days=10)
+        data_br = data_futura.strftime("%d/%m/%Y")
+
+        # Digita data
+        ActionChains(self.driver)\
+            .send_keys_to_element(prazo_validade, data_br)\
+            .perform()
+        
+        # Digita prazo de entrega
+        prazo_entrega = WebDriverWait(self.driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "id_prazoEntregaDias"))
+        )
+        ActionChains(self.driver)\
+            .click(prazo_entrega)\
+            .perform()
+        
+        ActionChains(self.driver)\
+            .key_down(Keys.CONTROL)\
+            .send_keys("a")\
+            .key_up(Keys.CONTROL)\
+            .perform()
+        
+        ActionChains(self.driver)\
+            .send_keys(Keys.DELETE)\
+            .perform()
+        
+        ActionChains(self.driver)\
+            .send_keys_to_element(prazo_entrega, "20")
+        
+        # Cria item de proposta
+        cria_item = WebDriverWait(self.driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "botao_criar_item_de_proposta"))
+        )
+        ActionChains(self.driver)\
+            .click(cria_item)\
+            .perform()
+        
+
 def main():
     dotenv.load_dotenv()
     loginOS = os.getenv("LOGIN")
     senhaOS = os.getenv("PASSWORD")
     tkinter = tkinter_class.tkinter_class
     caminho_pdf = tkinter.escolher_pdf()
-    automacao = Nomus(loginOS, senhaOS, caminho_pdf)
+    caminho_planilha = tkinter.escolher_planilha()
+    automacao = Nomus(loginOS, senhaOS, caminho_pdf, caminho_planilha)
     linhas = '-=' * 20
 
     automacao.login_nomus()
@@ -947,6 +1060,11 @@ def main():
 
             ic("Production scripts created successfully!")
             ic(linhas)
+
+        elif resposta == 5:
+            # Criar orçamento
+            for pecas in range(automacao.pecas):
+                automacao.criar_orcamento(pecas)
 
         elif resposta == 6:
             ic("Exiting the program...")
