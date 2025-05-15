@@ -70,7 +70,7 @@ class Nomus:
             self.driver.get(self.url + 'Produto.do?metodo=Pesquisar')
             
         except Exception as e:
-            ic(f"Error acessing page: {e}")
+            ic(f"Error acessing page: {e}  ..")
 
 
     def verificar_pecas(self, peca):
