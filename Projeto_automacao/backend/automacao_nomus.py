@@ -5,10 +5,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from leitura import leitura
 from icecream import ic
 from time import sleep
 from datetime import timedelta 
-import leituraPDF
+# import leituraPDF
 import tkinter_class
 import dotenv
 import os
@@ -25,8 +26,11 @@ class Nomus:
         self.chromedriverPath = r'C:\Users\Thalles\AppData\Local\Programs\chromedriver-win64'
         self.service = Service(executable_path=self.chromedriverPath)
         self.driver = webdriver.Chrome()
-        self.leitura = leituraPDF.leituraPDF(caminho_pdf)
-        self.paginas = leituraPDF.leituraPDF.extrair_paginas(self.leitura)
+        self.leitura = leitura(caminho_pdf)
+        self.dados = self.leitura.extrair_dados()
+        self.peca = self.leitura.peca
+        self.extracao_pecas = self.leitura.extrair_pecas()
+        self.pecas = self.leitura.extrair_tamanho()
         self.itens_verificados = []
 
     def login_nomus(self):
@@ -58,7 +62,7 @@ class Nomus:
             ic(f"Error acessing page: {e}")
 
 
-    def verificar_pecas(self, pagina):
+    def verificar_pecas(self, peca):
 
         while not self.driver.current_url.startswith(self.url + 'Produto.do?metodo=Pesquisar'):
             self.acessar_pagina()
@@ -69,7 +73,7 @@ class Nomus:
                 EC.visibility_of_element_located((By.NAME, "descricaoPesquisa"))
             )
             ActionChains(self.driver)\
-                .send_keys_to_element(text_input, self.leitura.encontrar_codigo(pagina))\
+                .send_keys_to_element(text_input, self.leitura.lista_pecas[peca]["Código"])\
                 .perform()
         except Exception as e:
             ic(f"Error inserting product name: {e}")
@@ -92,11 +96,11 @@ class Nomus:
             )
 
             if elemento.is_displayed():
-                self.itens_verificados.append(self.leitura.encontrar_codigo(pagina))
+                self.itens_verificados.append(self.leitura.lista_pecas[peca].copy())
             else:
                 pass
-        except Exception:  
-            ic("Product already exists on system.")
+        except Exception as e:  
+            ic(f"Error verifying product existence. {e}")
 
         try:
             # Apaga informações do campo de pesquisa
@@ -123,18 +127,18 @@ class Nomus:
         
         self.driver.get(self.url + 'Produto.do?metodo=Criar_produto')
 
-    def preencher_campos(self, pagina):
+    def preencher_campos(self, peca):
         
         while not self.driver.current_url.startswith(self.url + 'Produto.do?metodo=Criar_produto'):
             self.criar_produto()
 
-        if self.leitura.encontrar_codigo(pagina) in self.itens_verificados:
+        if self.leitura.lista_pecas[peca]["Código"] in self.itens_verificados[peca]["Código"]:
             # Descrição do produto
             descricao_produto_criacaoPA = WebDriverWait(self.driver, 20).until(
                 EC.visibility_of_element_located((By.NAME, "descricao"))
             )
             ActionChains(self.driver)\
-                .send_keys_to_element(descricao_produto_criacaoPA, self.leitura.encontrar_codigo(pagina).upper())\
+                .send_keys_to_element(descricao_produto_criacaoPA, self.leitura.lista_pecas[peca]["Código"].upper())\
                 .perform()
             
             # Unidade de medida
@@ -155,7 +159,7 @@ class Nomus:
             grupo_produto_criacaoPA = WebDriverWait(self.driver, 20).until(
                 EC.visibility_of_element_located((By.NAME, "idGrupoProduto"))
             )
-            if self.leitura.encontrar_material(pagina) in "Carbono Cliente" or "Inox Cliente":
+            if self.leitura.lista_pecas[peca]["Material"] in "Carbono Cliente" or "Inox Cliente":
                 select = Select(grupo_produto_criacaoPA)
                 select.select_by_value("21") # Industrialização
             else:
@@ -175,24 +179,24 @@ class Nomus:
                 EC.visibility_of_element_located((By.NAME, "nomeNcm"))
             )
 
-            if self.leitura.encontrar_cliente(pagina) in "ADR":
+            if self.leitura.lista_pecas[peca]["Cliente"] in "ADR":
                 ActionChains(self.driver)\
                     .send_keys_to_element(ncm_criacaoPA, "87169090")\
                     .perform()
             else:
-                if self.leitura.encontrar_espessura(pagina) <= 3:
+                if self.leitura.lista_pecas[peca]["Espessura"] <= 3:
                     ActionChains(self.driver)\
                 .send_keys_to_element(ncm_criacaoPA, "72085400")\
                         .perform()
-                if 3.1 <= self.leitura.encontrar_espessura(pagina) <= 4.75:
+                if 3.1 <= self.leitura.lista_pecas[peca]["Espessura"] <= 4.75:
                     ActionChains(self.driver)\
                         .send_keys_to_element(ncm_criacaoPA, "72085300")\
                         .perform()
-                if 4.76 < self.leitura.encontrar_espessura(pagina) <= 10:
+                if 4.76 < self.leitura.lista_pecas[peca]["Espessura"] <= 10:
                     ActionChains(self.driver)\
                         .send_keys_to_element(ncm_criacaoPA, "72085200")\
                         .perform()
-                if 10.1 < self.leitura.encontrar_espessura(pagina) <= 25:
+                if 10.1 < self.leitura.lista_pecas[peca]["Espessura"] <= 25:
                     ActionChains(self.driver)\
                         .send_keys_to_element(ncm_criacaoPA, "72085100")\
                         .perform()
@@ -219,7 +223,7 @@ class Nomus:
             select_tipo_venda_criacaoPA = WebDriverWait(self.driver, 20).until(
                 EC.visibility_of_element_located((By.NAME, "idTipoMovimentacaoPadraoVenda"))
             )
-            if self.leitura.encontrar_material() in "Carbono Cliente" or "Inox Cliente":
+            if "Cliente" in self.leitura.lista_pecas[peca]["Material"]:
                 select = Select(select_tipo_venda_criacaoPA)
                 select.select_by_value("45") # Industrialização
             else:
@@ -238,7 +242,7 @@ class Nomus:
             seleciona_tipo_ordem_criacaoPA = WebDriverWait(self.driver, 20).until(
                 EC.visibility_of_element_located((By.NAME, "idTipoOrdemPadrao"))
             )
-            if self.leitura.encontrar_material() in "Carbono Cliente" or "Inox Cliente":
+            if self.leitura.lista_pecas[peca]["Material"] in "Carbono Cliente" or "Inox Cliente":
                 select = Select(seleciona_tipo_ordem_criacaoPA)
                 select.select_by_value("2") # Industrialização
             else:
@@ -267,8 +271,8 @@ class Nomus:
                 .click(click_botao_salvar_criacaoPA)\
                 .perform()
 
-    def criar_lista_materiais(self, pagina):
-        espessura = int(self.leitura.encontrar_espessura(pagina))
+    def criar_lista_materiais(self, peca):
+        espessura = int(self.leitura.lista_pecas[peca]["Espessura"])
 
         # Verifica se está na pagina correta
         while not self.driver.current_url.startswith(self.url + "Produto.do?metodo=Pesquisar"):
@@ -298,7 +302,7 @@ class Nomus:
             EC.visibility_of_element_located((By.NAME, "descricaoPesquisa"))
         )
         ActionChains(self.driver)\
-            .send_keys_to_element(digita_produto_pesquisa, self.leitura.encontrar_codigo(pagina))\
+            .send_keys_to_element(digita_produto_pesquisa, self.leitura.lista_pecas[peca]["Código"])\
             .perform()
         
         # Clica no botão para pesquisar
@@ -310,7 +314,7 @@ class Nomus:
             .perform()
         
         # Encontra o produto na pagina e clica no produto
-        nome = self.leitura.encontrar_codigo(pagina).upper()
+        nome = self.leitura.lista_pecas[peca]["Código"].upper()
         xpath = f"//span[contains(text(), '{nome}')]"
 
         click_produto = self.driver.find_element(By.XPATH, xpath)
@@ -368,7 +372,7 @@ class Nomus:
             )
             
             # Verifica se o material é da ADR
-            if self.leitura.encontrar_cliente() in "ADR":
+            if self.leitura.lista_pecas[peca]["Cliente"] in "ADR":
                 if 4 <= espessura <= 5:
                     ActionChains(self.driver)\
                         .send_keys_to_element(digita_materia_prima, "MP 00026")\
@@ -415,7 +419,7 @@ class Nomus:
                     EC.visibility_of_element_located((By.NAME, "qtdeNecessariaProdutoFilho"))
                 )
                 ActionChains(self.driver)\
-                    .send_keys_to_element(digita_peso, self.leitura.encontrar_peso())\
+                    .send_keys_to_element(digita_peso, self.leitura.lista_pecas[peca]["Peso (str)"])\
                     .perform()
                 
                 # Clica em avançado
@@ -497,7 +501,7 @@ class Nomus:
                     EC.visibility_of_element_located((By.NAME, "qtdeNecessariaProdutoFilho"))
                 )
                 ActionChains(self.driver)\
-                    .send_keys_to_element(digita_peso, self.leitura.encontrar_peso())\
+                    .send_keys_to_element(digita_peso, self.leitura.lista_pecas[peca]["Peso (str)"])\
                     .perform()
             
             # Salva a materia prima adicionada
@@ -510,7 +514,7 @@ class Nomus:
         else:
             pass
 
-    def criar_roteiro(self, pagina):
+    def criar_roteiro(self, peca):
 
         # Verifica se está na página correta
         while not self.driver.current_url.startswith(self.url + 'Produto.do?metodo=Pesquisar'):
@@ -542,7 +546,7 @@ class Nomus:
             EC.visibility_of_element_located((By.NAME, "descricaoPesquisa"))
         )
         ActionChains(self.driver)\
-            .send_keys_to_element(digita_produto_pesquisa, self.leitura.encontrar_codigo(pagina))\
+            .send_keys_to_element(digita_produto_pesquisa, self.leitura.lista_pecas[peca]["Código"])\
             .perform()
         
         # Clica no botão para pesquisar
@@ -554,7 +558,7 @@ class Nomus:
             .perform()
 
         # Encontra o produto na pagina e clica no produto
-        nome = self.leitura.encontrar_codigo(pagina).upper()
+        nome = self.leitura.lista_pecas[peca]["Código"].upper()
         xpath = f"//span[contains(text(), '{nome}')]"
 
         click_produto = self.driver.find_element(By.XPATH, xpath)
@@ -647,7 +651,7 @@ class Nomus:
                 EC.visibility_of_element_located((By.NAME, "tempoOperacaoCentroTrabalho"))
             )
             ActionChains(self.driver)\
-                .send_keys_to_element(digita_tempo_operacao, self.leitura.encontrar_tempo(pagina))\
+                .send_keys_to_element(digita_tempo_operacao, self.leitura.lista_pecas[peca]["Tempo"])\
                 .perform()
             
             # Seleciona tipo de tempo de operação
@@ -670,14 +674,14 @@ class Nomus:
                 EC.visibility_of_element_located((By.NAME, "tempoMODOperacaoCentroTrabalho"))
             )
             ActionChains(self.driver)\
-                .send_keys_to_element(digita_tempo_MOD_operacao, self.leitura.encontrar_tempo(pagina))\
+                .send_keys_to_element(digita_tempo_MOD_operacao, self.leitura.lista_pecas[peca]["Tempo"])\
                 .perform()
             
             # Verifica se existe dobra e converte a quantidade de string para int
-            if self.leitura.encontrar_dobra(pagina) in " " and "FIM" and "Dobras não encontrada.":
+            if self.leitura.lista_pecas[peca]["Dobras"] == 0:
                 pass
             else:
-                quantidade_dobra = int(self.leitura.encontrar_dobra(pagina))
+                quantidade_dobra = int(self.leitura.lista_pecas[peca]["Dobras"])
  
                 # Verifica se existe dobra
                 if quantidade_dobra >= 1:
@@ -794,14 +798,17 @@ class Nomus:
                         ActionChains(self.driver)\
                             .send_keys_to_element(digita_tempo_MOD_operacao_dobra, tempo_formatado)\
                             .perform()
-                    
-                # Clica no botão para salvar1
-                click_botao_salvar = WebDriverWait(self.driver, 5).until(
-                    EC.visibility_of_element_located((By.XPATH, ".//input[@type='button' and @id='botao_salvar']"))
-                )
-                ActionChains(self.driver)\
-                    .double_click(click_botao_salvar)\
-                    .perform()
+                        
+            # Clica no botão para salvar
+            click_botao_salvar = WebDriverWait(self.driver, 5).until(
+                EC.visibility_of_element_located((By.XPATH, ".//input[@type='button' and @id='botao_salvar']"))
+            )
+            ActionChains(self.driver)\
+                .double_click(click_botao_salvar)\
+                .perform()
+            
+            # Log de sucesso
+            ic("Production script sucessfully created.")
         else:
             pass
                 
@@ -825,9 +832,6 @@ class Nomus:
         ActionChains(self.driver)\
             .send_keys(Keys.DELETE)\
             .perform()
-        
-        # Log de sucesso
-        ic("Production script sucessfully created.")
 
 def main():
     dotenv.load_dotenv()
@@ -869,9 +873,10 @@ def main():
 
             # Verificar se as peças já estão criadas
             ic(linhas)
-            for pagina in range(automacao.paginas):
-                automacao.verificar_pecas(pagina)
-            ic(f'Verificated items: \n {automacao.itens_verificados}')
+            for pecas in range(automacao.pecas):
+                automacao.verificar_pecas(pecas)
+            for item in range(len(automacao.itens_verificados)):
+                ic(f"Verificated item: {automacao.itens_verificados[item]}")
             ic(f'List lenght: {len(automacao.itens_verificados)}')
 
             sleep(2)
@@ -882,23 +887,23 @@ def main():
             tamanho_lista = len(automacao.itens_verificados)
             ic(f"List lenght: {tamanho_lista}")
             if tamanho_lista > 0:
-                for pagina in range(automacao.paginas):
+                for pecas in range(automacao.pecas):
                         automacao.criar_produto()
-                        automacao.preencher_campos(pagina)
+                        automacao.preencher_campos(pecas)
 
             sleep(2)
 
             # Criar lista de materiais
-            for pagina in range(automacao.paginas):
-                automacao.criar_lista_materiais(pagina)
+            for pecas in range(automacao.pecas):
+                automacao.criar_lista_materiais(pecas)
             
             ic("Material list created successfully!")
             ic(linhas)
 
             # Criar roteiro de produção
             ic(linhas)
-            for pagina in range(automacao.paginas):
-                automacao.criar_roteiro(pagina)
+            for pecas in range(automacao.pecas):
+                automacao.criar_roteiro(pecas)
 
             ic("Production scripts created successfully!")
             ic(linhas)
@@ -906,8 +911,8 @@ def main():
         elif resposta == 2:
             # Verificar se as peças já estão criadas
             ic(linhas)
-            for pagina in range(automacao.paginas):
-                automacao.verificar_pecas(pagina)
+            for pecas in range(automacao.pecas):
+                automacao.verificar_pecas(pecas)
             ic(f'Verificated items: \n {automacao.itens_verificados}')
             ic(f'List lenght: {len(automacao.itens_verificados)}')
 
@@ -919,17 +924,17 @@ def main():
             tamanho_lista = len(automacao.itens_verificados)
             ic(f"List lenght: {tamanho_lista}")
             if tamanho_lista > 0:
-                for pagina in range(automacao.paginas):
+                for pecas in range(automacao.pecas):
                         automacao.criar_produto()
-                        automacao.preencher_campos(pagina)
+                        automacao.preencher_campos(pecas)
 
             sleep(2)
             ic("Products created successfully!")
 
         elif resposta == 3:
             # Criar lista de materiais
-            for pagina in range(automacao.paginas):
-                automacao.criar_lista_materiais(pagina)
+            for pecas in range(automacao.pecas):
+                automacao.criar_lista_materiais(pecas)
             
             ic("Material list created successfully!")
             ic(linhas)
@@ -937,8 +942,8 @@ def main():
         elif resposta == 4:
              # Criar roteiro de produção
             ic(linhas)
-            for pagina in range(automacao.paginas):
-                automacao.criar_roteiro(pagina)
+            for pecas in range(automacao.pecas):
+                automacao.criar_roteiro(pecas)
 
             ic("Production scripts created successfully!")
             ic(linhas)
