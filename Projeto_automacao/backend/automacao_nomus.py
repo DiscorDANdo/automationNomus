@@ -5,12 +5,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 from leitura import leitura
 from orcamento import orcamento
 from icecream import ic
 from time import sleep
 from datetime import timedelta, date
 import tkinter_class
+import traceback
 import dotenv
 import os
 
@@ -70,10 +72,10 @@ class Nomus:
             self.driver.get(self.url + 'Produto.do?metodo=Pesquisar')
             
         except Exception as e:
-            ic(f"Error acessing page: {e}  ..")
+            ic(f"Error acessing page: {e}")
 
 
-    def verificar_pecas(self, peca):
+    def verificar_pecas(self, peca: dict):
 
         while not self.driver.current_url.startswith(self.url + 'Produto.do?metodo=Pesquisar'):
             self.acessar_pagina()
@@ -97,23 +99,35 @@ class Nomus:
             ActionChains(self.driver)\
                 .click(click)\
                 .perform()
-        except Exception as e:
-            ic(f"Error searching the product: {e}")
         
-        # Verificando se a peça já exite no sistema
-        try:
-            elemento = WebDriverWait(self.driver, 2).until(
-                EC.visibility_of_element_located((By.CLASS_NAME, "tela-vazia"))
-            )
         
-            if elemento.is_displayed():
-                self.itens_verificados.append(self.leitura.lista_pecas[peca].copy())
-            else:
+            # Verificando se a peça já exite no sistema
+            peca_existente = True
+
+            nome = self.leitura.lista_pecas[peca]["Código"].upper()
+            # xpath = f"//span[contains(text(), '{nome}')]"
+            xpath = f"//span[text()='{nome}']"
+
+            try:
+                WebDriverWait(self.driver, 2).until(
+                    EC.visibility_of_element_located((By.XPATH, xpath))
+                )
+            except TimeoutException:
+                ic("Product don't exists")
+                peca_existente = False
+
+                return peca_existente
+        
+            if peca_existente:
                 pass
         except Exception as e:
             ic(f"Error verifying product: {e}")
+        
+        finally:
+            if not peca_existente:
+                self.itens_verificados.append(self.leitura.lista_pecas[peca].copy())
+                ic("Item inserted in list successfully!")
 
-        try:
             # Apaga informações do campo de pesquisa
             campo_pesquisa = WebDriverWait(self.driver, 10).until(
                 EC.visibility_of_element_located((By.NAME, "descricaoPesquisa")))
@@ -130,20 +144,21 @@ class Nomus:
             ActionChains(self.driver)\
                 .send_keys(Keys.DELETE)\
                 .perform()
-        except Exception as e:
-            ic(f"Error erasing info on descripton field: {e}")
-        
+    
 
     def criar_produto(self):
         
         self.driver.get(self.url + 'Produto.do?metodo=Criar_produto')
 
-    def preencher_campos(self, peca):
+    def preencher_campos(self, peca : dict):
         
         while not self.driver.current_url.startswith(self.url + 'Produto.do?metodo=Criar_produto'):
             self.criar_produto()
 
-        if self.leitura.lista_pecas[peca]["Código"] in self.itens_verificados[peca]["Código"]:
+        cod = self.leitura.lista_pecas[peca]["Código"]
+        ic(f"Verificated items: {self.itens_verificados}")
+
+        if any(item["Código"] == cod for item in self.itens_verificados):
             # Descrição do produto
             descricao_produto_criacaoPA = WebDriverWait(self.driver, 20).until(
                 EC.visibility_of_element_located((By.NAME, "descricao"))
@@ -988,8 +1003,6 @@ def main():
             ic(linhas)
             for pecas in range(automacao.pecas):
                 automacao.verificar_pecas(pecas)
-            for item in range(len(automacao.itens_verificados)):
-                ic(f"Verificated item: {automacao.itens_verificados[item]}")
             ic(f'List lenght: {len(automacao.itens_verificados)}')
 
             sleep(2)
