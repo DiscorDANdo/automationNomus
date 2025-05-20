@@ -33,19 +33,38 @@ class orcamento:
             sheet[f"C{linha_excel}"] = f"{self.formatar_valor(row["Largura"])}"
             sheet[f"D{linha_excel}"] = f"{self.formatar_valor(row["Comprimento"])}"
             sheet[f"G{linha_excel}"] = f"{self.formatar_tempo(row["Tempo"])}"
-            sheet[f"J{linha_excel}"] = row["QNTD"]
+            sheet[f"J{linha_excel}"] = int(row["QNTD"])
             sheet[f"H{linha_excel}"] = row["DOBRA"]
         book.save(self.arquivo_planilha)
 
     def extrair_dados_excel(self):
+            
+        input("Abra a planilha, salve e a feche para prosseguir.")
+        
+        book =  load_workbook(self.arquivo_planilha, data_only=True)
+        sheet = book["Carbono"]
+
         df = pd.read_excel(self.arquivo_planilha, sheet_name="Carbono")
+
+        linha = 2
         
         for i, row in df.iterrows():
-            self.peca_excel["Código"] = row["PEÇA"]
-            self.peca_excel["Quantidade"] = row["QTDE"]
-            self.peca_excel["Valor"] = row["UNI"]
+            try:
+                self.peca_excel["Código"] = row["PEÇA"]
+                self.peca_excel["Quantidade"] = row["QTDE"]
+                if sheet[f"K{linha}"].value is not None:
+                    valor = sheet[f"K{linha}"].value
 
-            self.dados_excel.append(self.peca_excel.copy())
+                valor_formatado = f"{valor:.2f}"
+                self.peca_excel["Valor"] = valor_formatado
+
+                if sheet[f"A{linha}"].value is not None:
+                    self.dados_excel.append(self.peca_excel.copy())
+                    
+                linha += 1
+            except Exception as e:
+                ic(f"Error extracting data: {e}")
+
         ic("Products successfully extracted from Excel")
 
     def formatar_valor(self, valor):
@@ -91,6 +110,8 @@ class orcamento:
         caminho_planilha = tkinter_class.escolher_planilha()
         automacao = orcamento(caminho_pdf, caminho_planilha)
         automacao.extrair_dados()
+        automacao.extrair_dados_excel()
+        ic(automacao.dados_excel[0])
         ic("Data extraction completed successfully.")
 
 if __name__ == "__main__":

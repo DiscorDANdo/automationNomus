@@ -12,7 +12,6 @@ from icecream import ic
 from time import sleep
 from datetime import timedelta, date
 import tkinter_class
-import traceback
 import dotenv
 import os
 
@@ -39,12 +38,6 @@ class Nomus:
         self.peca = self.leitura.peca
         self.extracao_pecas = self.leitura.extrair_pecas()
         self.pecas = self.leitura.extrair_tamanho()
-
-        # orcamento
-        self.orcamento = orcamento(caminho_pdf, caminho_planilha)
-        self.orcamento.extrair_dados
-        self.orcamento.extrair_dados_excel()
-        pecas_excel = self.orcamento.dados_excel
 
     def login_nomus(self):
 
@@ -863,7 +856,13 @@ class Nomus:
             .send_keys(Keys.DELETE)\
             .perform()
 
-    def criar_orcamento(self, peca):
+    def criar_orcamento(self, peca : dict, caminho_pdf, caminho_planilha):
+        # orcamento
+        dados_orcamento = orcamento(caminho_pdf, caminho_planilha)
+        dados_orcamento.extrair_dados()
+        dados_excel = dados_orcamento.dados_excel
+        dados_orcamento.extrair_dados_excel()
+
         while not self.driver.current_url.startswith(self.url + "Proposta.do?metodo=Criar_proposta"):
             self.driver.get(self.url + "Proposta.do?metodo=Criar_proposta")
 
@@ -905,61 +904,96 @@ class Nomus:
             EC.visibility_of_element_located((By.ID, "id_dataValidade"))
         )
 
+        sleep(2)
+
         # Apaga data antiga
-        ActionChains(self.driver)\
-            .click(prazo_validade)\
-            .perform()
-        
-        ActionChains(self.driver)\
-            .key_down(Keys.CONTROL)\
-            .send_keys("a")\
-            .key_up(Keys.CONTROL)\
-            .perform()
-        
-        ActionChains(self.driver)\
-            .send_keys(Keys.DELETE)\
-            .perform()
+        prazo_validade.clear()
         
         # Pega data atual e futura
         data = date.today()
         data_futura = data + timedelta(days=10)
-        data_br = data_futura.strftime("%d/%m/%Y")
+        data_br = str(data_futura.strftime("%d/%m%Y"))
+        ic(data_br)
 
-        # Digita data
-        ActionChains(self.driver)\
-            .send_keys_to_element(prazo_validade, data_br)\
-            .perform()
+        sleep(2)
+
+        prazo_validade.send_keys(data_br)
+        prazo_validade.send_keys(Keys.TAB)
         
         # Digita prazo de entrega
         prazo_entrega = WebDriverWait(self.driver, 10).until(
             EC.visibility_of_element_located((By.ID, "id_prazoEntregaDias"))
         )
-        ActionChains(self.driver)\
-            .click(prazo_entrega)\
-            .perform()
+
+        prazo_entrega.clear()
+        prazo_entrega.send_keys("20")
+        prazo_entrega.send_keys(Keys.ENTER)
         
-        ActionChains(self.driver)\
-            .key_down(Keys.CONTROL)\
-            .send_keys("a")\
-            .key_up(Keys.CONTROL)\
-            .perform()
-        
-        ActionChains(self.driver)\
-            .send_keys(Keys.DELETE)\
-            .perform()
-        
-        ActionChains(self.driver)\
-            .send_keys_to_element(prazo_entrega, "20")
-        
+        ic(dados_orcamento.dados_excel)
+
+        ic(f"Quantidade de peças extraídas: {len(dados_orcamento.dados_excel)}")
+        for i, peca in enumerate(dados_orcamento.dados_excel):
+            ic(f"{i}: {peca}")
+
         # Cria item de proposta
         cria_item = WebDriverWait(self.driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "botao_criar_item_de_proposta"))
+            EC.element_to_be_clickable((By.ID, "botao_criar_item_de_proposta"))
         )
         ActionChains(self.driver)\
             .click(cria_item)\
             .perform()
-        
 
+        for index, item in enumerate(dados_orcamento.dados_excel):
+            try:
+                # Digita código da peça
+                campo_produto = WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.ID, "id_nomeProduto"))
+                )
+                ActionChains(self.driver)\
+                    .send_keys_to_element(campo_produto, item["Código"])\
+                    .perform()
+                
+                # Clica no produto
+                click_produto = WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.ID, "ui-id-8"))
+                )
+                ActionChains(self.driver)\
+                    .click(click_produto)\
+                    .perform()
+                
+                # Digita a quantidade
+                campo_quantidade = WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.ID, "id_qtdeInformada"))
+                )
+                ActionChains(self.driver)\
+                    .send_keys_to_element(campo_quantidade, item["Quantidade"])\
+                    .perform()
+
+                # Digita valor
+                campo_valor = WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.ID, "id_precoUnitario"))
+                )
+                ActionChains(self.driver)\
+                    .send_keys_to_element(campo_valor, item["Valor"])\
+                    .perform()
+                
+                # Verifica quantidade de peças para salvar ou continuar a cadastrar
+                if index < len(dados_orcamento.dados_excel) - 1:
+                    click_salvar = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.ID, "botao_salvar_criar_novo_item"))
+                    )
+                else:
+                    click_salvar = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.ID, "botao_salvar"))
+                    )
+                ActionChains(self.driver)\
+                    .click(click_salvar)\
+                    .perform()
+                
+                campo_produto.clear()
+                
+            except Exception as e:
+                ic(f"Error creating product: {e}")
 def main():
     dotenv.load_dotenv()
     loginOS = os.getenv("LOGIN")
@@ -1076,8 +1110,7 @@ def main():
 
         elif resposta == 5:
             # Criar orçamento
-            for pecas in range(automacao.pecas):
-                automacao.criar_orcamento(pecas)
+            automacao.criar_orcamento(0, caminho_pdf, caminho_planilha)
 
         elif resposta == 6:
             ic("Exiting the program...")
