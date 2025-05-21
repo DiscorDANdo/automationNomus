@@ -5,13 +5,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 from leitura import leitura
 from orcamento import orcamento
 from icecream import ic
 from time import sleep
 from datetime import timedelta, date
 import tkinter_class
+import traceback
 import dotenv
 import os
 
@@ -20,7 +21,7 @@ import os
 
 class Nomus:
     
-    def __init__(self, username, password, caminho_pdf, caminho_planilha):
+    def __init__(self, username, password, caminho_pdf):
         
         # Selenium
         self.url = 'https://metalservtech.nomus.com.br/metalservtech/'
@@ -860,7 +861,6 @@ class Nomus:
         # orcamento
         dados_orcamento = orcamento(caminho_pdf, caminho_planilha)
         dados_orcamento.extrair_dados()
-        dados_excel = dados_orcamento.dados_excel
         dados_orcamento.extrair_dados_excel()
 
         while not self.driver.current_url.startswith(self.url + "Proposta.do?metodo=Criar_proposta"):
@@ -945,37 +945,38 @@ class Nomus:
 
         for index, item in enumerate(dados_orcamento.dados_excel):
             try:
+                sleep(5)
+
                 # Digita código da peça
-                campo_produto = WebDriverWait(self.driver, 10).until(
-                    EC.visibility_of_element_located((By.ID, "id_nomeProduto"))
-                )
-                ActionChains(self.driver)\
-                    .send_keys_to_element(campo_produto, item["Código"])\
-                    .perform()
+                try:
+                    campo_produto = WebDriverWait(self.driver, 10).until(
+                        EC.visibility_of_element_located((By.ID, "id_nomeProduto"))
+                    )
+                except StaleElementReferenceException as e:
+                    ic(f"Erro ao encontrar o campo de código: {traceback.format_exc(e)}")
+                except Exception as e:
+                    ic(f"Erro ao criar o produto: {traceback.format_exc(e)}")
+
+                campo_produto.clear()
+                campo_produto.send_keys(item["Código"])
                 
                 # Clica no produto
                 click_produto = WebDriverWait(self.driver, 10).until(
                     EC.visibility_of_element_located((By.ID, "ui-id-8"))
                 )
-                ActionChains(self.driver)\
-                    .click(click_produto)\
-                    .perform()
+                click_produto.click()
                 
                 # Digita a quantidade
                 campo_quantidade = WebDriverWait(self.driver, 10).until(
                     EC.visibility_of_element_located((By.ID, "id_qtdeInformada"))
                 )
-                ActionChains(self.driver)\
-                    .send_keys_to_element(campo_quantidade, item["Quantidade"])\
-                    .perform()
+                campo_quantidade.send_keys(item["Quantidade"])
 
                 # Digita valor
                 campo_valor = WebDriverWait(self.driver, 10).until(
                     EC.visibility_of_element_located((By.ID, "id_precoUnitario"))
                 )
-                ActionChains(self.driver)\
-                    .send_keys_to_element(campo_valor, item["Valor"])\
-                    .perform()
+                campo_valor.send_keys(item["Valor"])
                 
                 # Verifica quantidade de peças para salvar ou continuar a cadastrar
                 if index < len(dados_orcamento.dados_excel) - 1:
@@ -986,22 +987,24 @@ class Nomus:
                     click_salvar = WebDriverWait(self.driver, 10).until(
                         EC.element_to_be_clickable((By.ID, "botao_salvar"))
                     )
-                ActionChains(self.driver)\
-                    .click(click_salvar)\
-                    .perform()
-                
-                campo_produto.clear()
-                
-            except Exception as e:
-                ic(f"Error creating product: {e}")
+                click_salvar.click()
+            
+            except Exception:
+                ic(f"Error creating product: {traceback.format_exception}")
+            
+        # Salva o orçamento
+        click_finalizar = WebDriverWait(self.driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "botao_salvar"))
+        )
+        click_finalizar.click()
+            
 def main():
     dotenv.load_dotenv()
     loginOS = os.getenv("LOGIN")
     senhaOS = os.getenv("PASSWORD")
     tkinter = tkinter_class.tkinter_class
     caminho_pdf = tkinter.escolher_pdf()
-    caminho_planilha = tkinter.escolher_planilha()
-    automacao = Nomus(loginOS, senhaOS, caminho_pdf, caminho_planilha)
+    automacao = Nomus(loginOS, senhaOS, caminho_pdf)
     linhas = '-=' * 20
 
     automacao.login_nomus()
@@ -1110,6 +1113,8 @@ def main():
 
         elif resposta == 5:
             # Criar orçamento
+            ic("Escolha a planilha desejada.")
+            caminho_planilha = tkinter.escolher_planilha()
             automacao.criar_orcamento(0, caminho_pdf, caminho_planilha)
 
         elif resposta == 6:
