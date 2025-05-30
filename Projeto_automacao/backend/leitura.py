@@ -3,8 +3,8 @@ from tkinter_class import tkinter_class
 import pdfplumber
 import pandas as pd
 import tabula
-
-# TODO: Alterar a função de extrair o cliente.
+import sys
+import os
 
 class leitura:
 
@@ -28,6 +28,8 @@ class leitura:
 
     def extrair_dados(self):
         try:
+            sys.stderr = open(os.devnull, 'w')
+
             df = tabula.read_pdf(self.arquivo_pdf, pages='all', multiple_tables=True, lattice=True)
 
             dfs_completed = pd.concat(df, ignore_index=True)
@@ -35,6 +37,8 @@ class leitura:
             return dfs_completed
         except Exception as e:
             ic(f"Error reading PDF: {e}")
+        finally:
+            sys.stderr = sys.__stderr__
 
     def extrair_pecas(self):
         try:
@@ -65,9 +69,6 @@ class leitura:
         with pdfplumber.open(self.arquivo_pdf) as pdf:
             primeira_pagina = pdf.pages[0]
 
-            # Coordenadas (x0, y0, x1, y1) em pontos PDF
-            # Ajuste os valores abaixo com base na sua área
-            # Exemplo: região no topo da página
             bbox = (0, 50, 500, 70)  # esquerda, topo, direita, inferior
 
             area = primeira_pagina.within_bbox(bbox)

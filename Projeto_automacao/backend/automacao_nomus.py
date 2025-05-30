@@ -31,6 +31,7 @@ class Nomus:
         self.service = Service(executable_path=self.chromedriverPath)
         self.driver = webdriver.Chrome()
         self.itens_verificados = []
+        self.clientes_terceirizacao = ["ADR", "JLS", "FACTORY NAUTICA"]
 
         # leitura
         self.caminho_pdf = caminho_pdf
@@ -179,7 +180,7 @@ class Nomus:
             grupo_produto_criacaoPA = WebDriverWait(self.driver, 20).until(
                 EC.visibility_of_element_located((By.NAME, "idGrupoProduto"))
             )
-            if self.leitura.lista_pecas[peca]["Material"] in "Cliente":
+            if "CLIENTE" in self.leitura.lista_pecas[peca]["Material"].upper():
                 select = Select(grupo_produto_criacaoPA)
                 select.select_by_value("21") # Industrialização
             else:
@@ -199,7 +200,7 @@ class Nomus:
                 EC.visibility_of_element_located((By.NAME, "nomeNcm"))
             )
 
-            if self.leitura.lista_pecas[peca]["Cliente"] in "ADR":
+            if "ADR" in self.leitura.lista_pecas[peca]["Cliente"].upper():
                 ActionChains(self.driver)\
                     .send_keys_to_element(ncm_criacaoPA, "87169090")\
                     .perform()
@@ -291,248 +292,282 @@ class Nomus:
                 .click(click_botao_salvar_criacaoPA)\
                 .perform()
 
+    def obter_mp(self, espessura, peca : dict):
+        cliente = peca["Cliente"].upper()
+        material = peca["Material"].upper()
+
+        mp_metal = [
+            ((1, 1.5), "MP 00002"),
+            ((1.9, 2), "MP 00001"),
+            ((3, 3.1), "MP 00019"),
+            ((4, 5), "MP 00003"),
+            ((6, 6.3), "MP 00006"),
+            ((7, 7.5), "MP 00017"),
+            ((7.9, 8), "MP 00018"),
+            ((9, 9.5), "MP 00032"),
+            ((12, 12.7), "MP 00011"),
+            ((15.8, 16), "MP 00036"),
+            ((19, 20), "MP 00001"), # SEM CHAPA NO SISTEMA
+            ((25, 25), "MP 00001"), # SEM CHAPA NO SISTEMA
+        ]
+        mp_adr = [
+            ((4, 5), "MP 00026"),
+            ((6, 6.3), "MP 00016"),
+            ((7.9, 8), "MP 00014"),
+            ((9, 9.5), "MP 00015"),
+            ((12, 12.7), "MP 00009"),
+            ((15, 16), "MP 00046"),
+            ((19, 20), "MP 00035"),
+            ((25, 25), "MP 00025"),
+        ]
+        mp_jls_carbono = []
+        mp_jls_inox = []
+
+        if "ADR" in cliente:
+            for (min_esp, max_esp), codigo in mp_adr:
+                if min_esp <= espessura <= max_esp:
+                    return codigo
+        elif "JLS" in cliente:
+            if "CARBONO" in material:
+                for (min_esp, max_esp), codigo, in mp_jls_carbono:
+                    if min_esp <= espessura <= max_esp:
+                        return codigo
+            if "INOX" in material:
+                for (min_esp, max_esp), codigo in mp_jls_inox:
+                    if min_esp <= espessura <= max_esp:
+                        return codigo
+        else:
+            for (min_esp, max_esp), codigo in mp_metal:
+                if min_esp <= espessura <= max_esp:
+                    return codigo
+
     def criar_lista_materiais(self, peca):
-        espessura = int(self.leitura.lista_pecas[peca]["Espessura"])
+        for index, item in self.leitura.lista_pecas:
+            espessura = float(item["Espessura"])
+            codigo_mp = self.obter_mp(espessura, item)
 
-        # Verifica se está na pagina correta
-        while not self.driver.current_url.startswith(self.url + "Produto.do?metodo=Pesquisar"):
-            self.acessar_pagina()
-        
-        # Limpa o campo de pesquisa
-        campo_pesquisa = WebDriverWait(self.driver, 10).until(
-            EC.visibility_of_element_located((By.NAME, "descricaoPesquisa")))
-        ActionChains(self.driver)\
-            .click(campo_pesquisa)\
-            .perform()
-        
-        ActionChains(self.driver)\
-            .key_down(Keys.CONTROL)\
-            .send_keys("a")\
-            .key_up(Keys.CONTROL)\
-            .perform()
-        
-        ActionChains(self.driver)\
-            .send_keys(Keys.DELETE)\
-            .perform()
-        
-        sleep(1)
-
-        # Digita o nome do produto
-        digita_produto_pesquisa = WebDriverWait(self.driver, 10).until(
-            EC.visibility_of_element_located((By.NAME, "descricaoPesquisa"))
-        )
-        ActionChains(self.driver)\
-            .send_keys_to_element(digita_produto_pesquisa, self.leitura.lista_pecas[peca]["Código"])\
-            .perform()
-        
-        # Clica no botão para pesquisar
-        click_pesquisa_produto = WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.ID, "botao_pesquisar"))
-            )
-        ActionChains(self.driver)\
-            .click(click_pesquisa_produto)\
-            .perform()
-        
-        # Encontra o produto na pagina e clica no produto
-        nome = self.leitura.lista_pecas[peca]["Código"].upper()
-        xpath = f"//span[contains(text(), '{nome}')]"
-
-        click_produto = self.driver.find_element(By.XPATH, xpath)
-        ActionChains(self.driver)\
-            .click(click_produto)\
-            .perform()
-        
-        # Clica no submenu de lista de materiais
-        click_submenu_lista_materiais = WebDriverWait(self.driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "produtoAtivoLiberado_itemSubMenu_acessarListaMateriais"))
-        )
-        ActionChains(self.driver)\
-            .click(click_submenu_lista_materiais)\
-            .perform()
-
-        # Verifica se já existe lista de materiais:
-        botao_localizado = False
-        try:
-            WebDriverWait(self.driver, 5).until(
-                EC.visibility_of_element_located((By.ID, "botao_acessaradicionaritemestrutura"))
-            )
-            botao_localizado = True
-            return botao_localizado
-        except Exception:
-            pass
-
-        if not botao_localizado:
-            # Clica em salvar para criar a lista de materiais
-            click_salvar_lista_materiais = WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.ID, "botao_salvar"))
-            )
-            ActionChains(self.driver)\
-                .click(click_salvar_lista_materiais)\
-                .perform()
+            # Verifica se está na pagina correta
+            while not self.driver.current_url.startswith(self.url + "Produto.do?metodo=Pesquisar"):
+                self.acessar_pagina()
+            sleep(1)
             
-            # Clica no botão para adicionar um item a estrutura
-            click_adicionar_item = WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.ID, "botao_acessaradicionaritemestrutura"))
-            )
-            ActionChains(self.driver)\
-                .click(click_adicionar_item)\
-                .perform()
+            # Limpa o campo de pesquisa
+            campo_pesquisa = WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.NAME, "descricaoPesquisa")))
+            campo_pesquisa.clear()
+            sleep(1)
 
-            # Clica no geral
-            click_geral = WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.XPATH, '//*[@id="ui-id-3"]'))
+            # Digita o nome do produto
+            digita_produto_pesquisa = WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.NAME, "descricaoPesquisa"))
             )
-            ActionChains(self.driver)\
-                .click(click_geral)\
-                .perform()
+            digita_produto_pesquisa.send_keys(item["Código"])
             
-            # Digita o código da matéria prima
-            digita_materia_prima = WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.ID, "nome_produto"))
+            # Clica no botão para pesquisar
+            click_pesquisa_produto = WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.ID, "botao_pesquisar"))
+                )
+            click_pesquisa_produto.click()
+            sleep(1)
+            
+            # Encontra o produto na pagina e clica no produto
+            nome = item["Código"].upper()
+            xpath = f"//span[contains(text(), '{nome}')]"
+
+            click_produto = self.driver.find_element(By.XPATH, xpath)
+            click_produto.click()
+            sleep()
+
+            # Clica no submenu de lista de materiais
+            click_submenu_lista_materiais = WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.ID, "produtoAtivoLiberado_itemSubMenu_acessarListaMateriais"))
             )
-            
-            # Verifica se o material é da ADR
-            if self.leitura.lista_pecas[peca]["Cliente"] in "ADR":
-                if 4 <= espessura <= 5:
+            click_submenu_lista_materiais.click()
+            sleep(1)
+
+            # Verifica se já existe lista de materiais:
+            botao_localizado = False
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.visibility_of_element_located((By.ID, "botao_acessaradicionaritemestrutura"))
+                )
+                botao_localizado = True
+                return botao_localizado
+            except TimeoutException:
+                pass
+
+            if not botao_localizado:
+                # Clica em salvar para criar a lista de materiais
+                click_salvar_lista_materiais = WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.ID, "botao_salvar"))
+                )
+                ActionChains(self.driver)\
+                    .click(click_salvar_lista_materiais)\
+                    .perform()
+                
+                # Clica no botão para adicionar um item a estrutura
+                click_adicionar_item = WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.ID, "botao_acessaradicionaritemestrutura"))
+                )
+                ActionChains(self.driver)\
+                    .click(click_adicionar_item)\
+                    .perform()
+
+                # Clica no geral
+                click_geral = WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.XPATH, '//*[@id="ui-id-3"]'))
+                )
+                ActionChains(self.driver)\
+                    .click(click_geral)\
+                    .perform()
+                
+                # Digita o código da matéria prima
+                digita_materia_prima = WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.ID, "nome_produto"))
+                )
+                
+                # Verifica se o material é da ADR
+                if self.leitura.lista_pecas[peca]["Cliente"] in "ADR":
+                    if 4 <= espessura <= 5:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00026")\
+                            .perform()
+                    elif 6 <= espessura <= 6.3:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00016")\
+                            .perform()
+                    elif 7.9 <= espessura <= 8:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00014")\
+                            .perform()
+                    elif 9 <= espessura <= 9.5:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00015")\
+                            .perform()
+                    elif 12 <= espessura <= 12.7:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00009")\
+                            .perform()
+                    elif 15 <= espessura <= 16:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00046")\
+                            .perform()
+                    elif 19 <= espessura < 19.5:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00035")\
+                            .perform()
+                    elif espessura <= 25:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00025")\
+                            .perform()
+                        
+                        # Clica no material
+                    click_material = WebDriverWait(self.driver, 10).until(
+                        EC.visibility_of_element_located((By.CLASS_NAME, "ui-menu-item"))
+                    )
                     ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00026")\
-                        .perform()
-                elif 6 <= espessura <= 6.3:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00016")\
-                        .perform()
-                elif 7.9 <= espessura <= 8:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00014")\
-                        .perform()
-                elif 9 <= espessura <= 9.5:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00015")\
-                        .perform()
-                elif 12 <= espessura <= 12.7:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00009")\
-                        .perform()
-                elif 15 <= espessura <= 16:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00046")\
-                        .perform()
-                elif 19 <= espessura < 19.5:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00035")\
-                        .perform()
-                elif espessura <= 25:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00025")\
+                        .click(click_material)\
                         .perform()
                     
+                    # Digita o peso
+                    digita_peso = WebDriverWait(self.driver, 10).until(
+                        EC.visibility_of_element_located((By.NAME, "qtdeNecessariaProdutoFilho"))
+                    )
+                    ActionChains(self.driver)\
+                        .send_keys_to_element(digita_peso, self.leitura.lista_pecas[peca]["Peso (str)"])\
+                        .perform()
+                    
+                    # Clica em avançado
+                    click_avancado = WebDriverWait(self.driver, 5).until(
+                        EC.visibility_of_element_located((By.XPATH, '//*[@id="ui-id-7"]'))
+                    )
+                    ActionChains(self.driver)\
+                        .click(click_avancado)\
+                        .perform()
+                    
+                    # Clica em recebe componentes de terceiros para industrialização sob encomenda 
+                    click_industrializacao = WebDriverWait(self.driver, 5).until(
+                        EC.visibility_of_element_located((By.ID, "id_recebe_componente_industrializacao"))
+                    )
+                    ActionChains(self.driver)\
+                        .click(click_industrializacao)\
+                        .perform()
+
+                else:    
+                    if espessura <= 1.5:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00002")\
+                            .perform()
+                    elif 1.9 <= espessura <= 2:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00001")\
+                            .perform()
+                    elif 3 <= espessura <= 3.1:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00019")\
+                            .perform()
+                    elif 4 <= espessura <= 5:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00003")\
+                            .perform()
+                    elif 6 <= espessura <= 6.3:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00006")\
+                            .perform()
+                    elif 7 <= espessura <= 7.5:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00017")\
+                            .perform()
+                    elif 7.9 <= espessura <= 8:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00018")\
+                            .perform()
+                    elif 9 <= espessura <= 9.5:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00032")\
+                            .perform()
+                    elif 12 <= espessura <= 12.7:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00011")\
+                            .perform()
+                    elif 15.88 <= espessura <= 16:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00036")\
+                            .perform()
+                    elif 19 <= espessura < 19.5:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00001")\
+                            .perform()
+                    elif espessura <= 25:
+                        ActionChains(self.driver)\
+                            .send_keys_to_element(digita_materia_prima, "MP 00001")\
+                            .perform()
+
                     # Clica no material
-                click_material = WebDriverWait(self.driver, 10).until(
-                    EC.visibility_of_element_located((By.CLASS_NAME, "ui-menu-item"))
-                )
-                ActionChains(self.driver)\
-                    .click(click_material)\
-                    .perform()
+                    click_material = WebDriverWait(self.driver, 10).until(
+                        EC.visibility_of_element_located((By.CLASS_NAME, "ui-menu-item"))
+                    )
+                    ActionChains(self.driver)\
+                        .click(click_material)\
+                        .perform()
+                    
+                    # Digita o peso
+                    digita_peso = WebDriverWait(self.driver, 10).until(
+                        EC.visibility_of_element_located((By.NAME, "qtdeNecessariaProdutoFilho"))
+                    )
+                    ActionChains(self.driver)\
+                        .send_keys_to_element(digita_peso, self.leitura.lista_pecas[peca]["Peso (str)"])\
+                        .perform()
                 
-                # Digita o peso
-                digita_peso = WebDriverWait(self.driver, 10).until(
-                    EC.visibility_of_element_located((By.NAME, "qtdeNecessariaProdutoFilho"))
+                # Salva a materia prima adicionada
+                click_salvar_materia_prima = WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.ID, "botao_salvar"))
                 )
                 ActionChains(self.driver)\
-                    .send_keys_to_element(digita_peso, self.leitura.lista_pecas[peca]["Peso (str)"])\
+                    .click(click_salvar_materia_prima)\
                     .perform()
-                
-                # Clica em avançado
-                click_avancado = WebDriverWait(self.driver, 5).until(
-                    EC.visibility_of_element_located((By.XPATH, '//*[@id="ui-id-7"]'))
-                )
-                ActionChains(self.driver)\
-                    .click(click_avancado)\
-                    .perform()
-                
-                # Clica em recebe componentes de terceiros para industrialização sob encomenda 
-                click_industrializacao = WebDriverWait(self.driver, 5).until(
-                    EC.visibility_of_element_located((By.ID, "id_recebe_componente_industrializacao"))
-                )
-                ActionChains(self.driver)\
-                    .click(click_industrializacao)\
-                    .perform()
-
-            else:    
-                if espessura <= 1.5:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00002")\
-                        .perform()
-                elif 1.9 <= espessura <= 2:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00001")\
-                        .perform()
-                elif 3 <= espessura <= 3.1:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00019")\
-                        .perform()
-                elif 4 <= espessura <= 5:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00003")\
-                        .perform()
-                elif 6 <= espessura <= 6.3:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00006")\
-                        .perform()
-                elif 7 <= espessura <= 7.5:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00017")\
-                        .perform()
-                elif 7.9 <= espessura <= 8:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00018")\
-                        .perform()
-                elif 9 <= espessura <= 9.5:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00032")\
-                        .perform()
-                elif 12 <= espessura <= 12.7:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00011")\
-                        .perform()
-                elif 15.88 <= espessura <= 16:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00036")\
-                        .perform()
-                elif 19 <= espessura < 19.5:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00001")\
-                        .perform()
-                elif espessura <= 25:
-                    ActionChains(self.driver)\
-                        .send_keys_to_element(digita_materia_prima, "MP 00001")\
-                        .perform()
-
-                # Clica no material
-                click_material = WebDriverWait(self.driver, 10).until(
-                    EC.visibility_of_element_located((By.CLASS_NAME, "ui-menu-item"))
-                )
-                ActionChains(self.driver)\
-                    .click(click_material)\
-                    .perform()
-                
-                # Digita o peso
-                digita_peso = WebDriverWait(self.driver, 10).until(
-                    EC.visibility_of_element_located((By.NAME, "qtdeNecessariaProdutoFilho"))
-                )
-                ActionChains(self.driver)\
-                    .send_keys_to_element(digita_peso, self.leitura.lista_pecas[peca]["Peso (str)"])\
-                    .perform()
-            
-            # Salva a materia prima adicionada
-            click_salvar_materia_prima = WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.ID, "botao_salvar"))
-            )
-            ActionChains(self.driver)\
-                .click(click_salvar_materia_prima)\
-                .perform()
-        else:
-            pass
+            else:
+                pass
 
     def criar_roteiro(self, peca):
 
@@ -945,7 +980,7 @@ class Nomus:
 
         for index, item in enumerate(dados_orcamento.dados_excel):
             try:
-                sleep(5)
+                sleep(2)
 
                 # Digita código da peça
                 try:
