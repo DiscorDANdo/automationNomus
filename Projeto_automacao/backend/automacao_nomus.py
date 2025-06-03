@@ -958,148 +958,158 @@ class Nomus:
     
     def alterar_chapa(self):
         for index, item, in enumerate(self.leitura.lista_pecas):
-            espessura = float(item["Espessura"])
-            codigo_mp = self.obter_mp(espessura, item)
-
-            # Verifica se está na pagina correta
-            while not self.driver.current_url.startswith(self.url + "Produto.do?metodo=Pesquisar"):
-                self.acessar_pagina()
-            sleep(1)
-            
-            # Limpa o campo de pesquisa
-            campo_pesquisa = WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.NAME, "descricaoPesquisa")))
-            campo_pesquisa.clear()
-            sleep(1)
-    
-            peca = item["Código"]
-            # Verifica se a peça é da JLS
-            if "JLS" in item["Cliente"]:
-                peca = item["Código"][:8].strip()
-
-            # Digita o nome do produto
-            digita_produto_pesquisa = WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.NAME, "descricaoPesquisa"))
-            )
-            digita_produto_pesquisa.send_keys(peca)
-            
-            # Clica no botão para pesquisar
-            click_pesquisa_produto = WebDriverWait(self.driver, 10).until(
-                    EC.visibility_of_element_located((By.ID, "botao_pesquisar"))
-                )
-            click_pesquisa_produto.click()
-            sleep(1)
-            
-            # Encontra o produto na pagina e clica no produto
-            nome = peca.upper()
-            xpath = f"//span[contains(text(), '{nome}')]"
-
-            click_produto = self.driver.find_element(By.XPATH, xpath)
-            click_produto.click()
-            sleep(1)
-
-            # Clica no submenu de lista de materiais
-            click_submenu_lista_materiais = WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.ID, "produtoAtivoLiberado_itemSubMenu_acessarListaMateriais"))
-            )
-            click_submenu_lista_materiais.click()
-            sleep(1)
-
-            # Verifica se já existe lista de materiais:
-            botao_localizado = False
             try:
-                click_adicionar_item = WebDriverWait(self.driver, 5).until(
-                    EC.visibility_of_element_located((By.ID, "botao_acessaradicionaritemestrutura"))
+                espessura = float(item["Espessura"])
+                codigo_mp = self.obter_mp(espessura, item)
+
+                # Verifica se está na pagina correta
+                while not self.driver.current_url.startswith(self.url + "Produto.do?metodo=Pesquisar"):
+                    self.acessar_pagina()
+                sleep(1)
+                
+                # Limpa o campo de pesquisa
+                campo_pesquisa = WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.NAME, "descricaoPesquisa")))
+                campo_pesquisa.clear()
+        
+                peca = item["Código"]
+                # Verifica se a peça é da JLS
+                if "JLS" in item["Cliente"]:
+                    peca = item["Código"][:8].strip()
+
+                # Digita o nome do produto
+                digita_produto_pesquisa = WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.NAME, "descricaoPesquisa"))
                 )
-                botao_localizado = True
-                return botao_localizado
-            except TimeoutException:
-                ic("Material list not found, creating a new one.")
-            finally:
-                # Verifica se já existe lista de materiais
-                if not botao_localizado:
-                    # Clica em salvar para criar a lista de materiais
-                    click_salvar_lista_materiais = WebDriverWait(self.driver, 10).until(
+                digita_produto_pesquisa.send_keys(peca)
+                
+                # Clica no botão para pesquisar
+                click_pesquisa_produto = WebDriverWait(self.driver, 10).until(
+                        EC.visibility_of_element_located((By.ID, "botao_pesquisar"))
+                    )
+                click_pesquisa_produto.click()
+                
+                # Encontra o produto na pagina e clica no produto
+                nome = peca.upper()
+                xpath = f"//span[contains(text(), '{nome}')]"
+
+                try:
+                    click_produto = WebDriverWait(self.driver, 2).until(
+                        EC.element_to_be_clickable((By.XPATH, xpath))
+                    )
+                    
+                except TimeoutException:
+                    continue
+                
+                click_produto.click()
+                sleep(1)
+                
+                # Clica no submenu de lista de materiais
+                click_submenu_lista_materiais = WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.ID, "produtoAtivoLiberado_itemSubMenu_acessarListaMateriais"))
+                )
+                click_submenu_lista_materiais.click()
+                sleep(1)
+
+                # Verifica se já existe lista de materiais:
+                botao_localizado = False
+                try:
+                    click_adicionar_item = WebDriverWait(self.driver, 5).until(
+                        EC.visibility_of_element_located((By.ID, "botao_acessaradicionaritemestrutura"))
+                    )
+                    botao_localizado = True
+                    return botao_localizado
+                except TimeoutException:
+                    ic("Material list not found, creating a new one.")
+                finally:
+                    # Verifica se já existe lista de materiais
+                    if not botao_localizado:
+                        # Clica em salvar para criar a lista de materiais
+                        click_salvar_lista_materiais = WebDriverWait(self.driver, 10).until(
+                            EC.visibility_of_element_located((By.ID, "botao_salvar"))
+                        )
+                        click_salvar_lista_materiais.click()
+
+                        # Clica no botão para adicionar um item a estrutura
+                        click_adicionar_item.click()
+                    else:
+                        # Verifica se o código da matéria prima esta correto
+                        xpath = f"//span[contains(text(), '{codigo_mp}')]"
+                        try:
+                            WebDriverWait(self.driver, 2).until(
+                                EC.visibility_of_element_located((By.XPATH, xpath))
+                            )
+                        except TimeoutException:
+                            if botao_localizado:
+                                click_adicionar_item.click()
+                            else:
+                                xpath = "//span[contains(text(), 'MP')]"
+                                click_materia_prima = WebDriverWait(self.driver, 2).until(
+                                    EC.element_to_be_clickable((By.XPATH, xpath))
+                                )
+                                click_materia_prima.click()
+                                sleep(1)
+
+                                click_editar = WebDriverWait(self.driver, 2).until(
+                                    EC.element_to_be_clickable((By.ID, "componentesProduto_itemSubMenu_acessarEditarItemListaMateriais"))
+                                )
+                                click_editar.click()
+
+                    sleep(1)
+
+                    # Clica no geral
+                    click_geral = WebDriverWait(self.driver, 10).until(
+                        EC.visibility_of_element_located((By.XPATH, '//*[@id="ui-id-3"]'))
+                    )
+                    click_geral.click()
+
+                    # Digita o código da matéria prima
+                    digita_materia_prima = WebDriverWait(self.driver, 10).until(
+                        EC.visibility_of_element_located((By.ID, "nome_produto"))
+                    )
+                    digita_materia_prima.clear()
+                    sleep(1)
+                    digita_materia_prima.send_keys(codigo_mp)
+                    sleep(1)
+
+                    # Clica no material
+                    click_material = WebDriverWait(self.driver, 10).until(
+                        EC.visibility_of_element_located((By.CLASS_NAME, "ui-menu-item"))
+                    )
+                    click_material.click()
+                    sleep(1)
+                    
+                    # Digita o peso
+                    digita_peso = WebDriverWait(self.driver, 10).until(
+                        EC.visibility_of_element_located((By.NAME, "qtdeNecessariaProdutoFilho"))
+                    )
+                    digita_peso.send_keys(item["Peso (str)"])
+                
+                    # Verifica se o material é de terceiros
+                    if item["Cliente"] in self.clientes_terceirizacao:
+                        # Clica em avançado
+                        click_avancado = WebDriverWait(self.driver, 5).until(
+                            EC.visibility_of_element_located((By.XPATH, '//*[@id="ui-id-7"]'))
+                        )
+                        click_avancado.click()
+
+                        try:
+                            xpath = "//input[@checked='checked']"
+                            checkmark = WebDriverWait(self.driver, 5).until(
+                                EC.visibility_of_element_located((By.XPATH, xpath))
+                            )
+                        except TimeoutException:
+                            checkmark.click()
+                    
+                    # Salva a materia prima adicionada
+                    click_salvar_materia_prima = WebDriverWait(self.driver, 10).until(
                         EC.visibility_of_element_located((By.ID, "botao_salvar"))
                     )
-                    click_salvar_lista_materiais.click()
-
-                    # Clica no botão para adicionar um item a estrutura
-                    click_adicionar_item.click()
-                else:
-                    # Verifica se o código da matéria prima esta correto
-                    xpath = f"//span[contains(text(), '{codigo_mp}')]"
-                    try:
-                        WebDriverWait(self.driver, 2).until(
-                            EC.visibility_of_element_located((By.XPATH, xpath))
-                        )
-                    except TimeoutException:
-                        if botao_localizado:
-                            click_adicionar_item.click()
-                        else:
-                            xpath = "//span[contains(text(), 'MP')]"
-                            click_materia_prima = WebDriverWait(self.driver, 2).until(
-                                EC.element_to_be_clickable((By.XPATH, xpath))
-                            )
-                            click_materia_prima.click()
-                            sleep(1)
-
-                            click_editar = WebDriverWait(self.driver, 2).until(
-                                EC.element_to_be_clickable((By.ID, "componentesProduto_itemSubMenu_acessarEditarItemListaMateriais"))
-                            )
-                            click_editar.click()
-
-                sleep(1)
-
-                # Clica no geral
-                click_geral = WebDriverWait(self.driver, 10).until(
-                    EC.visibility_of_element_located((By.XPATH, '//*[@id="ui-id-3"]'))
-                )
-                click_geral.click()
-
-                # Digita o código da matéria prima
-                digita_materia_prima = WebDriverWait(self.driver, 10).until(
-                    EC.visibility_of_element_located((By.ID, "nome_produto"))
-                )
-                digita_materia_prima.clear()
-                sleep(1)
-                digita_materia_prima.send_keys(codigo_mp)
-                sleep(1)
-
-                # Clica no material
-                click_material = WebDriverWait(self.driver, 10).until(
-                    EC.visibility_of_element_located((By.CLASS_NAME, "ui-menu-item"))
-                )
-                click_material.click()
-                sleep(1)
-                
-                # Digita o peso
-                digita_peso = WebDriverWait(self.driver, 10).until(
-                    EC.visibility_of_element_located((By.NAME, "qtdeNecessariaProdutoFilho"))
-                )
-                digita_peso.send_keys(item["Peso (str)"])
-            
-                # Verifica se o material é de terceiros
-                if item["Cliente"] in self.clientes_terceirizacao:
-                    # Clica em avançado
-                    click_avancado = WebDriverWait(self.driver, 5).until(
-                        EC.visibility_of_element_located((By.XPATH, '//*[@id="ui-id-7"]'))
-                    )
-                    click_avancado.click()
-
-                    try:
-                        xpath = "//input[@checked='checked']"
-                        checkmark = WebDriverWait(self.driver, 5).until(
-                            EC.visibility_of_element_located((By.XPATH, xpath))
-                        )
-                    except TimeoutException:
-                        checkmark.click()
-                
-                # Salva a materia prima adicionada
-                click_salvar_materia_prima = WebDriverWait(self.driver, 10).until(
-                    EC.visibility_of_element_located((By.ID, "botao_salvar"))
-                )
-                click_salvar_materia_prima.click()
+                    click_salvar_materia_prima.click()
+            except Exception as e:
+                ic(f"Error editing material: {traceback.format_exception(e)}")
+                ic(f"Item: {item["Código"]}")
+                continue
             
 def main():
     dotenv.load_dotenv()
