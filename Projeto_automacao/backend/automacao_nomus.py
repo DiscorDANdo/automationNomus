@@ -1136,8 +1136,8 @@ class Nomus:
 
                 peca = item["Código"]
                 # Verifica se a peça é da JLS
-                if "JLS" in item["Cliente"]:
-                    if "DS" in item["Código"] or "RM" in item["Código"] or "DU" in item["Código"]:
+                if "JLS" in item["Cliente"] or "PROFENG" in item["Código"]:
+                    if "DS" in item["Código"] or "RM" in item["Código"] or "DU" in item["Código"] or "GB" in item["Código"]:
                         peca = item["Código"][:17]
                     else:
                         peca = item["Código"][:8]
