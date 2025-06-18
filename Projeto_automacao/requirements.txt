@@ -35,4 +35,3 @@ wsproto==1.2.0
 dotenv
 tabula
 openpyxl
-tkinter

@@ -27,7 +27,7 @@ class Nomus:
         self.url = 'https://metalservtech.nomus.com.br/metalservtech/'
         self.username = username
         self.password = password
-        self.chromedriverPath = r'C:\Users\Thalles\AppData\Local\Programs\chromedriver-win64'
+        self.chromedriverPath = r'C:\Users\Programação\Documents\chromedriver\chromedriver-win64'
         self.service = Service(executable_path=self.chromedriverPath)
         self.driver = webdriver.Chrome()
         self.itens_verificados = []
@@ -300,11 +300,12 @@ class Nomus:
             ((1, 1.5), "MP 00002"),
             ((1.9, 2), "MP 00001"),
             ((3, 3.1), "MP 00019"),
-            ((4, 5), "MP 00003"),
+            ((4.25, 4.25), "MP 00129"),
+            ((4.75, 5), "MP 00003"),
             ((6, 6.3), "MP 00006"),
             ((7, 7.5), "MP 00017"),
-            ((7.9, 8), "MP 00018"),
-            ((9, 9.5), "MP 00032"),
+            ((7.9, 8), "MP 00123"),
+            ((9, 10.00), "MP 00032"),
             ((12, 12.7), "MP 00011"),
             ((15.8, 16), "MP 00036"),
             ((19, 20), "MP 00001"), # SEM CHAPA NO SISTEMA
@@ -328,7 +329,7 @@ class Nomus:
             ((3, 3.1), "MP 00079"),
             ((3.7, 3.75), "MP 00080"),
             ((4, 4.76), "MP 00081"),
-            ((6, 6.3), "MP 00089"),
+            ((6, 6.5), "MP 00089"),
             ((7.9, 8), "MP 00082"),
             ((9, 9.53), "MP 00083"),
             ((12, 12.7), "MP 00084"),
@@ -346,19 +347,31 @@ class Nomus:
             for (min_esp, max_esp), codigo in mp_adr:
                 if min_esp <= espessura <= max_esp:
                     return codigo
+                else:
+                    ic("Material not found")
+                    pass
         elif "JLS" in cliente:
             if "CARBONO" in material:
                 for (min_esp, max_esp), codigo, in mp_jls_carbono:
                     if min_esp <= espessura <= max_esp:
                         return codigo
+                    else:
+                        ic("Material not found")
+                        pass
             if "INOX" in material:
                 for (min_esp, max_esp), codigo in mp_jls_inox:
                     if min_esp <= espessura <= max_esp:
                         return codigo
+                    else:
+                        ic("Material not found")
+                        pass
         else:
             for (min_esp, max_esp), codigo in mp_metal:
                 if min_esp <= espessura <= max_esp:
                     return codigo
+                else:
+                    ic("Material not found")
+                    pass
 
     def criar_lista_materiais(self):
         for index, item in enumerate(self.leitura.lista_pecas):
