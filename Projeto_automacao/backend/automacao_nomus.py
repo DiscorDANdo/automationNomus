@@ -301,7 +301,7 @@ class Nomus:
             ((1.9, 2), "MP 00001"),
             ((3, 3.1), "MP 00019"),
             ((4.25, 4.25), "MP 00129"),
-            ((4.75, 5), "MP 00003"),
+            ((4.7, 5), "MP 00003"),
             ((6, 6.3), "MP 00006"),
             ((7, 7.5), "MP 00017"),
             ((7.9, 8), "MP 00123"),
@@ -348,7 +348,6 @@ class Nomus:
                 if min_esp <= espessura <= max_esp:
                     return codigo
                 else:
-                    ic("Material not found")
                     pass
         elif "JLS" in cliente:
             if "CARBONO" in material:
@@ -356,21 +355,20 @@ class Nomus:
                     if min_esp <= espessura <= max_esp:
                         return codigo
                     else:
-                        ic("Material not found")
+
                         pass
             if "INOX" in material:
                 for (min_esp, max_esp), codigo in mp_jls_inox:
                     if min_esp <= espessura <= max_esp:
                         return codigo
                     else:
-                        ic("Material not found")
+
                         pass
         else:
             for (min_esp, max_esp), codigo in mp_metal:
                 if min_esp <= espessura <= max_esp:
                     return codigo
                 else:
-                    ic("Material not found")
                     pass
 
     def criar_lista_materiais(self):
@@ -884,8 +882,6 @@ class Nomus:
         data = date.today()
         data_futura = data + timedelta(days=10)
         data_br = str(data_futura.strftime("%d/%m%Y"))
-        ic(data_br)
-
         sleep(2)
 
         prazo_validade.send_keys(data_br)
@@ -899,12 +895,10 @@ class Nomus:
         prazo_entrega.clear()
         prazo_entrega.send_keys("20")
         prazo_entrega.send_keys(Keys.ENTER)
-        
-        ic(dados_orcamento.dados_excel)
 
         ic(f"Quantidade de peças extraídas: {len(dados_orcamento.dados_excel)}")
         for i, peca in enumerate(dados_orcamento.dados_excel):
-            ic(f"{i}: {peca}")
+            ic(f"{i + 1}: {peca}")
 
         # Cria item de proposta
         cria_item = WebDriverWait(self.driver, 10).until(
@@ -930,12 +924,14 @@ class Nomus:
 
                 campo_produto.clear()
                 campo_produto.send_keys(item["Código"])
+                sleep(1)
                 
                 # Clica no produto
                 click_produto = WebDriverWait(self.driver, 10).until(
                     EC.visibility_of_element_located((By.ID, "ui-id-8"))
                 )
                 click_produto.click()
+                sleep(1)
                 
                 # Digita a quantidade
                 campo_quantidade = WebDriverWait(self.driver, 10).until(
@@ -954,6 +950,7 @@ class Nomus:
                     click_salvar = WebDriverWait(self.driver, 10).until(
                         EC.element_to_be_clickable((By.ID, "botao_salvar_criar_novo_item"))
                     )
+                    sleep(2)
                 else:
                     click_salvar = WebDriverWait(self.driver, 10).until(
                         EC.element_to_be_clickable((By.ID, "botao_salvar"))
