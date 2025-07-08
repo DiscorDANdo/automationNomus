@@ -298,17 +298,17 @@ class Nomus:
 
         mp_metal = [
             ((1, 1.5), "MP 00002"),
-            ((1.9, 2), "MP 00001"),
-            ((3, 3.1), "MP 00019"),
+            ((1.90, 2.00), "MP 00001"),
+            ((3.00, 3.10), "MP 00019"),
             ((4.25, 4.25), "MP 00129"),
-            ((4.7, 5), "MP 00003"),
-            ((6, 6.3), "MP 00006"),
-            ((7, 7.5), "MP 00017"),
-            ((7.9, 8), "MP 00123"),
-            ((9, 10.00), "MP 00032"),
-            ((12, 12.7), "MP 00011"),
-            ((15.8, 16), "MP 00036"),
-            ((19, 20), "MP 00001"), # SEM CHAPA NO SISTEMA
+            ((4.70, 5.00), "MP 00003"),
+            ((6.00, 6.40), "MP 00006"),
+            ((7.00, 7.50), "MP 00017"),
+            ((7.90, 8.00), "MP 00123"),
+            ((9.00, 10.00), "MP 00032"),
+            ((12.00, 12.90), "MP 00011"),
+            ((15.80, 16.00), "MP 00036"),
+            ((19.00, 20.00), "MP 00001"), # SEM CHAPA NO SISTEMA
             ((25, 25), "MP 00001"), # SEM CHAPA NO SISTEMA
         ]
         mp_adr = [
@@ -322,15 +322,15 @@ class Nomus:
             ((25, 25), "MP 00025"),
         ]
         mp_jls_carbono = [
-            ((1, 1.2), "MP 00115"),
-            ((1.4, 1.5), "MP 00076"),
-            ((1.9, 2), "MP 00087"),
+            ((1, 1.20), "MP 00115"),
+            ((1.4, 1.50), "MP 00076"),
+            ((1.9, 2.00), "MP 00087"),
             ((2.5, 2.66), "MP 00112"),
-            ((3, 3.1), "MP 00079"),
+            ((3, 3.10), "MP 00079"),
             ((3.7, 3.75), "MP 00080"),
-            ((4, 4.76), "MP 00081"),
-            ((6, 6.5), "MP 00089"),
-            ((7.9, 8), "MP 00082"),
+            ((4, 4.90), "MP 00081"),
+            ((6, 6.50), "MP 00089"),
+            ((7.50, 8.00), "MP 00082"),
             ((9, 9.53), "MP 00083"),
             ((12, 12.7), "MP 00084"),
         ]
@@ -346,30 +346,30 @@ class Nomus:
         if "ADR" in cliente:
             for (min_esp, max_esp), codigo in mp_adr:
                 if min_esp <= espessura <= max_esp:
-                    return codigo
-                else:
-                    pass
+                    codigo_encontrado = codigo
+                    
         elif "JLS" in cliente:
             if "CARBONO" in material:
                 for (min_esp, max_esp), codigo, in mp_jls_carbono:
                     if min_esp <= espessura <= max_esp:
-                        return codigo
-                    else:
+                        codigo_encontrado = codigo
 
-                        pass
             if "INOX" in material:
                 for (min_esp, max_esp), codigo in mp_jls_inox:
                     if min_esp <= espessura <= max_esp:
-                        return codigo
-                    else:
+                        codigo_encontrado = codigo
 
-                        pass
         else:
             for (min_esp, max_esp), codigo in mp_metal:
                 if min_esp <= espessura <= max_esp:
-                    return codigo
-                else:
-                    pass
+                    codigo_encontrado = codigo
+            
+        if codigo_encontrado:
+            return codigo_encontrado
+        else:
+            ic(f"Material não encontrado para espessura {espessura} mm.")
+            return "MP 00001"
+                
 
     def criar_lista_materiais(self):
         for index, item in enumerate(self.leitura.lista_pecas):
@@ -923,7 +923,7 @@ class Nomus:
                     ic(f"Erro ao criar o produto: {traceback.format_exc(e)}")
 
                 campo_produto.clear()
-                campo_produto.send_keys(item["Código"])
+                campo_produto.send_keys(str(item["Código"]))
                 sleep(1)
                 
                 # Clica no produto
@@ -944,6 +944,8 @@ class Nomus:
                     EC.visibility_of_element_located((By.ID, "id_precoUnitario"))
                 )
                 campo_valor.send_keys(item["Valor"])
+
+                sleep(2)
                 
                 # Verifica quantidade de peças para salvar ou continuar a cadastrar
                 if index < len(dados_orcamento.dados_excel) - 1:
@@ -953,7 +955,7 @@ class Nomus:
                     sleep(2)
                 else:
                     click_salvar = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable((By.ID, "botao_salvar"))
+                        EC.element_to_be_clickable((By.CLASS_NAME, "tipo1 escondidoNaImpressao"))
                     )
                 click_salvar.click()
             
