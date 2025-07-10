@@ -3,4 +3,4 @@ Projeto desenvolvido para automatização de diversos processos no site ERP Nomu
 Linguagem: Python
 Libs : Selenium, pdfplumber, tabula, Pandas, time, os, dotenv
 
-Criado por, Thalles D.
+Criado por: Thalles D.
