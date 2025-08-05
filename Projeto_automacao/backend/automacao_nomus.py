@@ -27,8 +27,9 @@ class Nomus:
         self.url = 'https://metalservtech.nomus.com.br/metalservtech/'
         self.username = username
         self.password = password
-        self.chromedriverPath = r'C:\Users\Programação\Documents\chromedriver\chromedriver-win64'
-        self.service = Service(executable_path=self.chromedriverPath)
+        self.dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.driver_path = os.path.join(self.dir_path, 'chromedriver')
+        self.service = Service(executable_path=self.driver_path)
         self.driver = webdriver.Chrome()
         self.itens_verificados = []
         self.clientes_terceirizacao = ["ADR", "JLS", "FACTORY NAUTICA"]

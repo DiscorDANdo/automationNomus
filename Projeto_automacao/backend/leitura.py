@@ -1,6 +1,7 @@
 from icecream import ic
 from tkinter_class import tkinter_class
 import pdfplumber
+import traceback
 import pandas as pd
 import tabula
 import sys
@@ -28,17 +29,21 @@ class leitura:
 
     def extrair_dados(self):
         try:
-            sys.stderr = open(os.devnull, 'w')
-
             df = tabula.read_pdf(self.arquivo_pdf, pages='all', multiple_tables=True, lattice=True)
 
+            if not df:
+                ic("No tables found in the PDF.")
+                return None
+
             dfs_completed = pd.concat(df, ignore_index=True)
+
+            if dfs_completed.empty:
+                ic("Concatenated DataFrame is empty.")
+                return None
 
             return dfs_completed
         except Exception as e:
             ic(f"Error reading PDF: {e}")
-        finally:
-            sys.stderr = sys.__stderr__
 
     def extrair_pecas(self):
         try:
@@ -60,8 +65,8 @@ class leitura:
                 self.lista_pecas.append(self.peca.copy())
             ic("Products successfully extracted")
         except Exception as e:
-            ic(f"Error extracting product: {e}")
-    
+            ic(f"Error extracting product: {traceback.format_exc()}")
+
     def extrair_tamanho(self):
         return len(self.lista_pecas)
     
